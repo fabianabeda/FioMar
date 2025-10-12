@@ -1,0 +1,106 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    /* FioMar - Design System inspirado no mar e artesanato */
+    --background: 210 25% 98%;
+    --foreground: 200 25% 10%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 200 25% 10%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 200 25% 10%;
+
+    /* Turquesa do mar */
+    --primary: 186 85% 45%;
+    --primary-foreground: 0 0% 100%;
+    --primary-glow: 186 75% 60%;
+
+    /* Coral/Rosa dos biquínis */
+    --secondary: 350 75% 65%;
+    --secondary-foreground: 0 0% 100%;
+
+    /* Tom areia claro */
+    --muted: 40 30% 94%;
+    --muted-foreground: 200 15% 40%;
+
+    /* Azul oceano escuro */
+    --accent: 200 70% 35%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 200 20% 88%;
+    --input: 200 20% 90%;
+    --ring: 186 85% 45%;
+
+    --radius: 0.75rem;
+
+    /* Gradientes */
+    --gradient-ocean: linear-gradient(135deg, hsl(186 85% 45%), hsl(200 70% 35%));
+    --gradient-sunset: linear-gradient(135deg, hsl(350 75% 65%), hsl(25 85% 60%));
+    --gradient-sand: linear-gradient(180deg, hsl(40 40% 96%), hsl(40 30% 94%));
+
+    /* Sombras suaves */
+    --shadow-soft: 0 2px 8px -2px hsl(200 25% 10% / 0.1);
+    --shadow-medium: 0 4px 12px -2px hsl(200 25% 10% / 0.15);
+    --shadow-strong: 0 8px 24px -4px hsl(200 25% 10% / 0.2);
+
+    /* Status colors */
+    --status-pendente: 40 85% 60%;
+    --status-em-producao: 200 85% 55%;
+    --status-aguardando: 35 85% 60%;
+    --status-concluido: 145 70% 45%;
+    --status-entregue: 145 60% 35%;
+    --status-cancelado: 0 70% 55%;
+  }
+
+  .dark {
+    --background: 200 30% 8%;
+    --foreground: 210 25% 95%;
+
+    --card: 200 25% 12%;
+    --card-foreground: 210 25% 95%;
+
+    --popover: 200 25% 12%;
+    --popover-foreground: 210 25% 95%;
+
+    --primary: 186 75% 50%;
+    --primary-foreground: 0 0% 100%;
+    --primary-glow: 186 65% 65%;
+
+    --secondary: 350 70% 60%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 200 20% 18%;
+    --muted-foreground: 200 10% 60%;
+
+    --accent: 200 65% 40%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 75% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 200 20% 20%;
+    --input: 200 20% 22%;
+    --ring: 186 75% 50%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
