@@ -1,4 +1,4 @@
-// pages/Dashboard.tsx (VERSÃO FINAL COM NOVO LAYOUT E CARDS CLICÁVEIS)
+// pages/Dashboard.tsx (VERSÃO FINAL COM NOVOS CARDS E NOMENCLATURAS)
 
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -10,18 +10,20 @@ import {
     Package,
     Users,
     Clock,
-    AlertCircle,
     Plus,
-    LogOut
+    LogOut,
+    ThumbsUp, // Ícone para "Pedidos Feitos"
+    CheckCheck, // Ícone para "Concluídos"
+    Truck, // Ícone para "Entregues"
 } from "lucide-react";
 import { toast } from "sonner";
 import { PostgrestError } from "@supabase/supabase-js";
 
+// 1. Interface atualizada: removido 'aguardando_pagamento'
 interface DashboardStats {
     total: number;
     pendente: number;
     em_producao: number;
-    aguardando_pagamento: number;
     concluido: number;
     entregue: number;
     totalClientes: number;
@@ -33,7 +35,6 @@ export default function Dashboard() {
         total: 0,
         pendente: 0,
         em_producao: 0,
-        aguardando_pagamento: 0,
         concluido: 0,
         entregue: 0,
         totalClientes: 0,
@@ -54,7 +55,6 @@ export default function Dashboard() {
 
     const loadStats = async () => {
         try {
-            // Otimizado para fazer as duas chamadas em paralelo
             const [pedidosRes, clientesRes] = await Promise.all([
                 supabase.from("pedidos").select("status"),
                 supabase.from("clientes").select("id", { count: "exact", head: true })
@@ -64,11 +64,11 @@ export default function Dashboard() {
             if (clientesRes.error) throw clientesRes.error;
 
             const pedidos = pedidosRes.data || [];
+            // 2. Lógica de contagem atualizada: 'aguardando_pagamento' não é mais contado aqui
             const newStats = {
                 total: pedidos.length,
                 pendente: pedidos.filter(p => p.status === "pendente").length,
                 em_producao: pedidos.filter(p => p.status === "em_producao").length,
-                aguardando_pagamento: pedidos.filter(p => p.status === "aguardando_pagamento").length,
                 concluido: pedidos.filter(p => p.status === "concluido").length,
                 entregue: pedidos.filter(p => p.status === "entregue").length,
                 totalClientes: clientesRes.count || 0,
@@ -89,7 +89,6 @@ export default function Dashboard() {
         navigate("/auth");
     };
 
-    // Função para navegar para a página de pedidos com um filtro de status
     const navigateToPedidos = (status: string) => {
         navigate(`/pedidos?status=${status}`);
     };
@@ -128,54 +127,31 @@ export default function Dashboard() {
                     <p className="text-muted-foreground">Visão geral dos seus pedidos e clientes</p>
                 </div>
 
-                {/* --- CARDS CLICÁVEIS --- */}
-                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-8">
-                    <Card
-                        onClick={() => navigateToPedidos('all')}
-                        className="p-6 bg-gradient-to-br from-card to-card/50 border-primary/20 hover:shadow-lg transition-shadow cursor-pointer"
-                    >
-                        <div className="flex items-center justify-between mb-4">
-                            <Package className="h-8 w-8 text-primary" />
-                            <Badge variant="secondary">{stats.total}</Badge>
-                        </div>
-                        <h3 className="text-sm font-medium text-muted-foreground mb-1">Total de Pedidos</h3>
-                        <p className="text-2xl font-bold">{stats.total}</p>
+                {/* 3. Grid de cards principais atualizado */}
+                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 mb-8">
+                    <Card onClick={() => navigateToPedidos('all')} className="p-6 bg-gradient-to-br from-card to-card/50 border-primary/20 hover:shadow-lg transition-shadow cursor-pointer">
+                        <div className="flex items-center justify-between mb-4"><Package className="h-8 w-8 text-primary" /><Badge variant="secondary">{stats.total}</Badge></div>
+                        <h3 className="text-sm font-medium text-muted-foreground mb-1">Total de Pedidos</h3><p className="text-2xl font-bold">{stats.total}</p>
                     </Card>
 
-                    <Card
-                        onClick={() => navigateToPedidos('em_producao')}
-                        className="p-6 bg-gradient-to-br from-card to-card/50 border-accent/20 hover:shadow-lg transition-shadow cursor-pointer"
-                    >
-                        <div className="flex items-center justify-between mb-4">
-                            <Clock className="h-8 w-8 text-accent" />
-                            <Badge className="bg-accent text-accent-foreground">{stats.em_producao}</Badge>
-                        </div>
-                        <h3 className="text-sm font-medium text-muted-foreground mb-1">Em Produção</h3>
-                        <p className="text-2xl font-bold">{stats.em_producao}</p>
+                    <Card onClick={() => navigateToPedidos('pendente')} className="p-6 bg-gradient-to-br from-card to-card/50 border-yellow-500/20 hover:shadow-lg transition-shadow cursor-pointer">
+                        <div className="flex items-center justify-between mb-4"><ThumbsUp className="h-8 w-8 text-yellow-500" /><Badge className="bg-yellow-500 text-white">{stats.pendente}</Badge></div>
+                        <h3 className="text-sm font-medium text-muted-foreground mb-1">Pedidos Feitos</h3><p className="text-2xl font-bold">{stats.pendente}</p>
                     </Card>
 
-                    <Card
-                        onClick={() => navigateToPedidos('pendente')}
-                        className="p-6 bg-gradient-to-br from-card to-card/50 border-secondary/20 hover:shadow-lg transition-shadow cursor-pointer"
-                    >
-                        <div className="flex items-center justify-between mb-4">
-                            <AlertCircle className="h-8 w-8 text-secondary" />
-                            <Badge className="bg-secondary text-secondary-foreground">{stats.pendente}</Badge>
-                        </div>
-                        <h3 className="text-sm font-medium text-muted-foreground mb-1">Pendentes</h3>
-                        <p className="text-2xl font-bold">{stats.pendente}</p>
+                    <Card onClick={() => navigateToPedidos('em_producao')} className="p-6 bg-gradient-to-br from-card to-card/50 border-blue-500/20 hover:shadow-lg transition-shadow cursor-pointer">
+                        <div className="flex items-center justify-between mb-4"><Clock className="h-8 w-8 text-blue-500" /><Badge className="bg-blue-500 text-white">{stats.em_producao}</Badge></div>
+                        <h3 className="text-sm font-medium text-muted-foreground mb-1">Em Produção</h3><p className="text-2xl font-bold">{stats.em_producao}</p>
                     </Card>
 
-                    <Card
-                        onClick={() => navigate('/clientes')}
-                        className="p-6 bg-gradient-to-br from-card to-card/50 border-border hover:shadow-lg transition-shadow cursor-pointer"
-                    >
-                        <div className="flex items-center justify-between mb-4">
-                            <Users className="h-8 w-8 text-foreground" />
-                            <Badge variant="outline">{stats.totalClientes}</Badge>
-                        </div>
-                        <h3 className="text-sm font-medium text-muted-foreground mb-1">Clientes</h3>
-                        <p className="text-2xl font-bold">{stats.totalClientes}</p>
+                    <Card onClick={() => navigateToPedidos('concluido')} className="p-6 bg-gradient-to-br from-card to-card/50 border-green-600/20 hover:shadow-lg transition-shadow cursor-pointer">
+                        <div className="flex items-center justify-between mb-4"><CheckCheck className="h-8 w-8 text-green-600" /><Badge className="bg-green-600 text-white">{stats.concluido}</Badge></div>
+                        <h3 className="text-sm font-medium text-muted-foreground mb-1">Concluídos</h3><p className="text-2xl font-bold">{stats.concluido}</p>
+                    </Card>
+
+                    <Card onClick={() => navigateToPedidos('entregue')} className="p-6 bg-gradient-to-br from-card to-card/50 border-green-700/20 hover:shadow-lg transition-shadow cursor-pointer">
+                        <div className="flex items-center justify-between mb-4"><Truck className="h-8 w-8 text-green-700" /><Badge className="bg-green-700 text-white">{stats.entregue}</Badge></div>
+                        <h3 className="text-sm font-medium text-muted-foreground mb-1">Entregues</h3><p className="text-2xl font-bold">{stats.entregue}</p>
                     </Card>
                 </div>
 
@@ -190,19 +166,16 @@ export default function Dashboard() {
                     </Card>
 
                     <Card className="p-6">
-                        <h3 className="text-lg font-semibold mb-4">Status dos Pedidos</h3>
+                        <h3 className="text-lg font-semibold mb-4">Resumo de Status</h3>
+                        {/* 4. Lista de resumo atualizada */}
                         <div className="space-y-3">
                             <div className="flex items-center justify-between cursor-pointer hover:bg-muted/50 p-2 rounded-md" onClick={() => navigateToPedidos('pendente')}>
-                                <span className="text-sm text-muted-foreground">Pendentes</span>
+                                <span className="text-sm text-muted-foreground">Pedidos Feitos</span>
                                 <Badge className="bg-yellow-500 text-white">{stats.pendente}</Badge>
                             </div>
                             <div className="flex items-center justify-between cursor-pointer hover:bg-muted/50 p-2 rounded-md" onClick={() => navigateToPedidos('em_producao')}>
                                 <span className="text-sm text-muted-foreground">Em Produção</span>
                                 <Badge className="bg-blue-500 text-white">{stats.em_producao}</Badge>
-                            </div>
-                            <div className="flex items-center justify-between cursor-pointer hover:bg-muted/50 p-2 rounded-md" onClick={() => navigateToPedidos('aguardando_pagamento')}>
-                                <span className="text-sm text-muted-foreground">Aguardando Pagamento</span>
-                                <Badge className="bg-orange-500 text-white">{stats.aguardando_pagamento}</Badge>
                             </div>
                             <div className="flex items-center justify-between cursor-pointer hover:bg-muted/50 p-2 rounded-md" onClick={() => navigateToPedidos('concluido')}>
                                 <span className="text-sm text-muted-foreground">Concluídos</span>
