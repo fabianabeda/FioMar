@@ -1,4 +1,4 @@
-// pages/EditarPedido.tsx
+// pages/EditarPedido.tsx (VERSÃO DE DEBUG PARA O UPLOAD)
 
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -17,11 +17,30 @@ import {
 } from "@/components/ui/select";
 import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
+import { PostgrestError } from "@supabase/supabase-js";
+
+// ... (Interfaces continuam as mesmas)
+interface PedidoData {
+    id: string;
+    cliente_id: string;
+    produto: string;
+    modelo_cima: string;
+    modelo_baixo: string;
+    tamanho?: string;
+    cor_frente: string;
+    cor_verso: string;
+    data_entrega: string;
+    valor: number;
+    observacoes?: string | null;
+    status: string;
+    foto_url?: string | null;
+}
 
 interface Cliente {
     id: string;
     nome_completo: string;
 }
+
 
 export default function EditarPedido() {
     const navigate = useNavigate();
@@ -29,25 +48,32 @@ export default function EditarPedido() {
     const [clientes, setClientes] = useState<Cliente[]>([]);
     const [loading, setLoading] = useState(false);
     const [initialLoading, setInitialLoading] = useState(true);
+    const [novaFotoFile, setNovaFotoFile] = useState<File | null>(null);
     const [formData, setFormData] = useState({
         cliente_id: "",
         produto: "biquini",
         modelo_cima: "cortininha",
         modelo_baixo: "tradicional",
+        tamanho: "P",
         cor_frente: "",
         cor_verso: "",
         data_entrega: "",
         valor: "",
         observacoes: "",
-        status: "pendente", // Adicionamos o status ao formulário
+        status: "pendente",
+        foto_url: "",
     });
 
     useEffect(() => {
-        checkAuth();
-        loadClientes();
-        loadPedidoData();
-    }, [id]);
+        const carregarDadosIniciais = async () => {
+            await checkAuth();
+            await loadClientes();
+            await loadPedidoData();
+        };
+        carregarDadosIniciais();
+    }, []);
 
+    // ... (checkAuth, loadClientes, loadPedidoData continuam os mesmos)
     const checkAuth = async () => {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) navigate("/auth");
@@ -59,7 +85,8 @@ export default function EditarPedido() {
             if (error) throw error;
             setClientes(data || []);
         } catch (error) {
-            toast.error("Erro ao carregar clientes");
+            const pgError = error as PostgrestError;
+            toast.error(pgError.message || "Erro ao carregar clientes");
         }
     };
 
@@ -70,7 +97,7 @@ export default function EditarPedido() {
             return;
         }
         try {
-            const { data, error } = await supabase.from("pedidos").select("*").eq("id", id).single();
+            const { data, error } = await supabase.from("pedidos").select<"*", PedidoData>("*").eq("id", id).single();
             if (error) throw error;
             if (data) {
                 setFormData({
@@ -78,49 +105,97 @@ export default function EditarPedido() {
                     produto: data.produto,
                     modelo_cima: data.modelo_cima,
                     modelo_baixo: data.modelo_baixo,
+                    tamanho: data.tamanho || "P",
                     cor_frente: data.cor_frente,
                     cor_verso: data.cor_verso,
                     data_entrega: data.data_entrega,
                     valor: String(data.valor),
                     observacoes: data.observacoes || "",
                     status: data.status || "pendente",
+                    foto_url: data.foto_url || "",
                 });
             }
         } catch (error) {
-            toast.error("Erro ao carregar dados do pedido.");
+            const pgError = error as PostgrestError;
+            console.error("Erro ao carregar dados do pedido:", pgError);
+            toast.error(pgError.message || "Erro ao carregar dados do pedido.");
             navigate("/pedidos");
         } finally {
             setInitialLoading(false);
         }
     };
 
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
+        toast.info("Iniciando processo de atualização..."); // MENSAGEM DE DEBUG
+
         try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) throw new Error("Sessão expirada. Por favor, faça login novamente.");
+
+            let novaFotoUrl = formData.foto_url;
+
+            if (novaFotoFile) {
+                toast.info("Nova foto detectada. Tentando fazer upload..."); // MENSAGEM DE DEBUG
+                console.log("Arquivo da nova foto:", novaFotoFile);
+
+                const newFileName = `${Date.now()}_${novaFotoFile.name}`;
+                const { data: uploadData, error: uploadError } = await supabase.storage
+                    .from("fotos-pedidos")
+                    .upload(newFileName, novaFotoFile);
+
+                if (uploadError) {
+                    // SE O UPLOAD FALHAR, O ERRO SERÁ MOSTRADO AGORA
+                    console.error("ERRO NO UPLOAD:", uploadError);
+                    toast.error(`Erro no upload: ${uploadError.message}`);
+                    throw uploadError; // Para a execução aqui
+                }
+
+                toast.success("Upload da nova foto concluído!"); // MENSAGEM DE DEBUG
+                const { data: urlData } = supabase.storage.from("fotos-pedidos").getPublicUrl(uploadData.path);
+                novaFotoUrl = urlData.publicUrl;
+            } else {
+                toast.info("Nenhuma foto nova selecionada. Pulando etapa de upload."); // MENSAGEM DE DEBUG
+            }
+
+            toast.info("Tentando atualizar o pedido no banco de dados..."); // MENSAGEM DE DEBUG
             const { error } = await supabase.from("pedidos").update({
+                // ... (dados do update)
                 cliente_id: formData.cliente_id,
                 produto: formData.produto,
                 modelo_cima: formData.modelo_cima,
                 modelo_baixo: formData.modelo_baixo,
+                tamanho: formData.tamanho,
                 cor_frente: formData.cor_frente,
                 cor_verso: formData.cor_verso,
                 data_entrega: formData.data_entrega,
                 valor: parseFloat(formData.valor),
                 observacoes: formData.observacoes || null,
                 status: formData.status,
+                foto_url: novaFotoUrl,
             }).eq("id", id);
 
-            if (error) throw error;
+            if (error) {
+                // SE O UPDATE FALHAR, O ERRO SERÁ MOSTRADO AGORA
+                console.error("ERRO NO UPDATE:", error);
+                toast.error(`Erro ao atualizar: ${error.message}`);
+                throw error; // Para a execução aqui
+            }
+
             toast.success("Pedido atualizado com sucesso!");
             navigate("/pedidos");
-        } catch (error: any) {
-            toast.error(error.message || "Erro ao atualizar pedido");
+        } catch (error) {
+            // Este catch agora pegará o erro real, seja do upload ou do update.
+            console.error("Erro final no handleSubmit:", error);
+            // A mensagem de erro já foi mostrada pelo toast anterior, então não precisamos de outro aqui.
         } finally {
             setLoading(false);
         }
     };
 
+    // ... (o resto do arquivo JSX continua o mesmo)
     if (initialLoading) {
         return (
             <div className="min-h-screen flex items-center justify-center">
@@ -131,7 +206,7 @@ export default function EditarPedido() {
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-background via-muted to-background">
-            <header className="border-b bg-card/80 backdrop-blur-sm">
+            <header className="border-b bg-card/80 backdrop-blur-sm sticky top-0 z-50">
                 <div className="container mx-auto px-4 py-4">
                     <Button variant="ghost" size="sm" onClick={() => navigate("/pedidos")}>
                         <ArrowLeft className="h-4 w-4 mr-2" />
@@ -148,50 +223,60 @@ export default function EditarPedido() {
 
                 <Card className="p-6">
                     <form onSubmit={handleSubmit} className="space-y-6">
-                        {/* Campo de Status */}
-                        <div className="space-y-2">
-                            <Label htmlFor="status">Status do Pedido *</Label>
-                            <Select
-                                value={formData.status}
-                                onValueChange={(value) => setFormData({ ...formData, status: value })}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="pendente">Pendente</SelectItem>
-                                    <SelectItem value="em_producao">Em Produção</SelectItem>
-                                    <SelectItem value="aguardando_pagamento">Aguardando Pagamento</SelectItem>
-                                    <SelectItem value="concluido">Concluído</SelectItem>
-                                    <SelectItem value="entregue">Entregue</SelectItem>
-                                    <SelectItem value="cancelado">Cancelado</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
+                        {/* --- INÍCIO DOS CAMPOS DO FORMULÁRIO NA ORDEM CORRETA --- */}
 
-                        {/* Restante do formulário... */}
                         <div className="space-y-2">
                             <Label htmlFor="cliente_id">Cliente *</Label>
-                            <Select
-                                value={formData.cliente_id}
-                                onValueChange={(value) => setFormData({ ...formData, cliente_id: value })}
-                                required
-                            >
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Selecione um cliente" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {clientes.map((cliente) => (
-                                        <SelectItem key={cliente.id} value={cliente.id}>
-                                            {cliente.nome_completo}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
+                            <Select value={formData.cliente_id} onValueChange={(value) => setFormData({ ...formData, cliente_id: value })} required>
+                                <SelectTrigger><SelectValue placeholder="Selecione um cliente" /></SelectTrigger>
+                                <SelectContent>{clientes.map((cliente) => (<SelectItem key={cliente.id} value={cliente.id}>{cliente.nome_completo}</SelectItem>))}</SelectContent>
                             </Select>
                         </div>
 
-                        {/* ... (copie e cole o resto dos campos do seu formulário de NovoPedido aqui) ... */}
-                        {/* Exemplo: */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="produto">Produto *</Label>
+                                <Select value={formData.produto} onValueChange={(value) => setFormData({ ...formData, produto: value })}>
+                                    <SelectTrigger><SelectValue /></SelectTrigger>
+                                    <SelectContent><SelectItem value="biquini">Biquíni</SelectItem><SelectItem value="maiô">Maiô</SelectItem></SelectContent>
+                                </Select>
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="tamanho">Tamanho *</Label>
+                                <Select value={formData.tamanho} onValueChange={(value) => setFormData({ ...formData, tamanho: value })}>
+                                    <SelectTrigger><SelectValue /></SelectTrigger>
+                                    <SelectContent><SelectItem value="PP">PP</SelectItem><SelectItem value="P">P</SelectItem><SelectItem value="M">M</SelectItem><SelectItem value="G">G</SelectItem><SelectItem value="GG">GG</SelectItem></SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="modelo_cima">Modelo Parte de Cima *</Label>
+                            <Select value={formData.modelo_cima} onValueChange={(value) => setFormData({ ...formData, modelo_cima: value })}>
+                                <SelectTrigger><SelectValue /></SelectTrigger>
+                                <SelectContent><SelectItem value="cortininha">Cortininha</SelectItem><SelectItem value="top fixo">Top Fixo</SelectItem></SelectContent>
+                            </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="modelo_baixo">Modelo Parte de Baixo *</Label>
+                            <Select value={formData.modelo_baixo} onValueChange={(value) => setFormData({ ...formData, modelo_baixo: value })}>
+                                <SelectTrigger><SelectValue /></SelectTrigger>
+                                <SelectContent><SelectItem value="tradicional">Tradicional</SelectItem><SelectItem value="meio-fio">Meio-Fio</SelectItem><SelectItem value="fio dental">Fio Dental</SelectItem><SelectItem value="largo">Largo</SelectItem></SelectContent>
+                            </Select>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="cor_frente">Cor Frente *</Label>
+                                <Input id="cor_frente" value={formData.cor_frente} onChange={(e) => setFormData({ ...formData, cor_frente: e.target.value })} placeholder="Ex: Azul turquesa" required />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="cor_verso">Cor Verso *</Label>
+                                <Input id="cor_verso" value={formData.cor_verso} onChange={(e) => setFormData({ ...formData, cor_verso: e.target.value })} placeholder="Ex: Coral" required />
+                            </div>
+                        </div>
+
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label htmlFor="data_entrega">Data de Entrega *</Label>
@@ -203,23 +288,36 @@ export default function EditarPedido() {
                             </div>
                         </div>
 
+                        {/* CAMPO DE FOTO ATUAL E UPLOAD DE NOVA FOTO (AGORA NA POSIÇÃO CORRETA) */}
+                        {formData.foto_url && (
+                            <div className="space-y-2">
+                                <Label>Foto de Referência Atual</Label>
+                                <a href={formData.foto_url} target="_blank" rel="noopener noreferrer">
+                                    <img src={formData.foto_url} alt="Referência" className="rounded-lg border max-h-48" />
+                                </a>
+                            </div>
+                        )}
+                        <div className="space-y-2">
+                            <Label htmlFor="nova_foto">Enviar Nova Foto (Opcional)</Label>
+                            <p className="text-sm text-muted-foreground">Selecione uma nova foto para substituir a atual, se houver.</p>
+                            <Input id="nova_foto" type="file" accept="image/png, image/jpeg, image/webp" onChange={(e) => { setNovaFotoFile(e.target.files ? e.target.files[0] : null); }} />
+                        </div>
+
                         <div className="space-y-2">
                             <Label htmlFor="observacoes">Observações</Label>
-                            <Textarea id="observacoes" value={formData.observacoes} onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })} placeholder="Observações adicionais..." rows={4} />
+                            <Textarea id="observacoes" value={formData.observacoes || ''} onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })} placeholder="Observações adicionais..." rows={4} />
                         </div>
-
 
                         <div className="flex gap-4 pt-4">
-                            <Button type="submit" disabled={loading} className="flex-1">
-                                {loading ? "Salvando..." : "Salvar Alterações"}
-                            </Button>
-                            <Button type="button" variant="outline" onClick={() => navigate("/pedidos")}>
-                                Cancelar
-                            </Button>
+                            <Button type="submit" disabled={loading} className="flex-1">{loading ? "Salvando..." : "Salvar Alterações"}</Button>
+                            <Button type="button" variant="outline" onClick={() => navigate("/pedidos")}>Cancelar</Button>
                         </div>
+
+                        {/* --- FIM DOS CAMPOS DO FORMULÁRIO --- */}
                     </form>
                 </Card>
             </main>
         </div>
     );
 }
+

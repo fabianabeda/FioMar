@@ -1,3 +1,5 @@
+// pages/EditarCliente.tsx (VERSÃO FINAL E CORRIGIDA)
+
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -8,13 +10,21 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
+import { PostgrestError } from "@supabase/supabase-js";
+
+interface ClienteData {
+    nome_completo: string;
+    telefone: string;
+    email?: string | null;
+    endereco?: string | null;
+}
 
 export default function EditarCliente() {
     const navigate = useNavigate();
-    const { id } = useParams<{ id: string }>(); // Pega o ID do cliente da URL
+    const { id } = useParams<{ id: string }>();
     const [loading, setLoading] = useState(false);
     const [initialLoading, setInitialLoading] = useState(true);
-    const [formData, setFormData] = useState({
+    const [formData, setFormData] = useState<ClienteData>({
         nome_completo: "",
         telefone: "",
         email: "",
@@ -22,56 +32,58 @@ export default function EditarCliente() {
     });
 
     useEffect(() => {
-        checkAuth();
-        loadClienteData();
-    }, [id]);
+        const carregarDados = async () => {
+            await checkAuth();
+            await loadClienteData();
+        };
+        carregarDados();
+    }, []);
 
     const checkAuth = async () => {
         const { data: { session } } = await supabase.auth.getSession();
-        if (!session) {
-            navigate("/auth");
-        }
+        if (!session) navigate("/auth");
     };
 
-    // Função para carregar os dados do cliente existente
     const loadClienteData = async () => {
         if (!id) {
             toast.error("ID do cliente não encontrado.");
             navigate("/clientes");
             return;
         }
-
         try {
             const { data, error } = await supabase
                 .from("clientes")
                 .select("*")
                 .eq("id", id)
-                .single(); // .single() para buscar apenas um registro
+                .single();
 
             if (error) throw error;
             if (data) {
                 setFormData({
-                    nome_completo: data.nome_completo || "",
-                    telefone: data.telefone || "",
-                    email: data.email || "",
-                    endereco: data.endereco || "",
+                    nome_completo: data.nome_completo,
+                    telefone: data.telefone,
+                    email: data.email,
+                    endereco: data.endereco,
                 });
             }
-        } catch (error: any) {
-            console.error("Erro ao carregar dados do cliente:", error);
-            toast.error("Erro ao carregar dados do cliente.");
+        } catch (error) {
+            const pgError = error as PostgrestError;
+            toast.error(pgError.message || "Erro ao carregar dados do cliente.");
             navigate("/clientes");
         } finally {
             setInitialLoading(false);
         }
     };
 
-    // Função para ATUALIZAR o cliente
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
 
         try {
+            // ADICIONAMOS A VERIFICAÇÃO DE USUÁRIO AQUI
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) throw new Error("Sessão expirada. Por favor, faça login novamente.");
+
             const { error } = await supabase
                 .from("clientes")
                 .update({
@@ -80,15 +92,16 @@ export default function EditarCliente() {
                     email: formData.email || null,
                     endereco: formData.endereco || null,
                 })
-                .eq("id", id); // A condição para saber QUAL cliente atualizar
+                .eq("id", id);
 
             if (error) throw error;
 
             toast.success("Cliente atualizado com sucesso!");
             navigate("/clientes");
-        } catch (error: any) {
-            console.error("Erro ao atualizar cliente:", error);
-            toast.error(error.message || "Erro ao atualizar cliente");
+        } catch (error) {
+            const pgError = error as PostgrestError;
+            console.error("Erro ao atualizar cliente:", pgError);
+            toast.error(pgError.message || "Erro ao atualizar cliente");
         } finally {
             setLoading(false);
         }
@@ -127,7 +140,6 @@ export default function EditarCliente() {
                                 id="nome_completo"
                                 value={formData.nome_completo}
                                 onChange={(e) => setFormData({ ...formData, nome_completo: e.target.value })}
-                                placeholder="Nome do cliente"
                                 required
                             />
                         </div>
@@ -139,7 +151,6 @@ export default function EditarCliente() {
                                 type="tel"
                                 value={formData.telefone}
                                 onChange={(e) => setFormData({ ...formData, telefone: e.target.value })}
-                                placeholder="(00) 00000-0000"
                                 required
                             />
                         </div>
@@ -149,9 +160,8 @@ export default function EditarCliente() {
                             <Input
                                 id="email"
                                 type="email"
-                                value={formData.email}
+                                value={formData.email || ''}
                                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                placeholder="cliente@email.com"
                             />
                         </div>
 
@@ -159,9 +169,8 @@ export default function EditarCliente() {
                             <Label htmlFor="endereco">Endereço</Label>
                             <Textarea
                                 id="endereco"
-                                value={formData.endereco}
+                                value={formData.endereco || ''}
                                 onChange={(e) => setFormData({ ...formData, endereco: e.target.value })}
-                                placeholder="Rua, número, bairro, cidade..."
                                 rows={3}
                             />
                         </div>
