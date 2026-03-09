@@ -1,5 +1,3 @@
-// pages/EditarCliente.tsx (VERSÃO FINAL E CORRIGIDA)
-
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,6 +9,9 @@ import { Card } from "@/components/ui/card";
 import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { PostgrestError } from "@supabase/supabase-js";
+
+// IMPORTAÇÃO DA LOGOMARCA
+import logoImg from "@/assets/logo-fabbis.jpeg";
 
 interface ClienteData {
     nome_completo: string;
@@ -80,7 +81,6 @@ export default function EditarCliente() {
         setLoading(true);
 
         try {
-            // ADICIONAMOS A VERIFICAÇÃO DE USUÁRIO AQUI
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) throw new Error("Sessão expirada. Por favor, faça login novamente.");
 
@@ -117,8 +117,15 @@ export default function EditarCliente() {
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-background via-muted to-background">
-            <header className="border-b bg-card/80 backdrop-blur-sm">
-                <div className="container mx-auto px-4 py-4">
+            {/* CABEÇALHO ATUALIZADO */}
+            <header className="border-b bg-card/80 backdrop-blur-sm sticky top-0 z-50">
+                <div className="container mx-auto px-4 py-2 flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                        <img src={logoImg} alt="Logomarca Fabbis" className="h-32 w-auto object-contain" />
+                        <div>
+                            <p className="text-sm text-muted-foreground font-medium">Editar Cliente</p>
+                        </div>
+                    </div>
                     <Button variant="ghost" size="sm" onClick={() => navigate("/clientes")}>
                         <ArrowLeft className="h-4 w-4 mr-2" />
                         Voltar

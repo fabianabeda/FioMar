@@ -9,6 +9,9 @@ import { Card } from "@/components/ui/card";
 import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 
+// IMPORTAÇÃO DA LOGOMARCA
+import logoImg from "@/assets/logo-fabbis.jpeg";
+
 export default function NovoCliente() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
@@ -60,12 +63,17 @@ export default function NovoCliente() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-muted to-background">
-      <header className="border-b bg-card/80 backdrop-blur-sm">
-        <div className="container mx-auto px-4 py-4">
-          <Button variant="ghost" size="sm" onClick={() => navigate("/clientes")}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Voltar
-          </Button>
+      <header className="border-b bg-card/80 backdrop-blur-sm sticky top-0 z-50">
+        <div className="container mx-auto px-4 py-2 flex items-center justify-between">
+            <div className="flex items-center gap-4">
+                <img src={logoImg} alt="Logomarca Fabbis" className="h-32 w-auto object-contain" />
+                <div>
+                    <p className="text-sm text-muted-foreground font-medium">Novo Cliente</p>
+                </div>
+            </div>
+            <Button variant="ghost" size="sm" onClick={() => navigate("/clientes")}>
+                <ArrowLeft className="h-4 w-4 mr-2" />Voltar
+            </Button>
         </div>
       </header>
 
@@ -79,60 +87,29 @@ export default function NovoCliente() {
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
               <Label htmlFor="nome_completo">Nome Completo *</Label>
-              <Input
-                id="nome_completo"
-                value={formData.nome_completo}
-                onChange={(e) => setFormData({ ...formData, nome_completo: e.target.value })}
-                placeholder="Nome do cliente"
-                required
-              />
+              <Input id="nome_completo" value={formData.nome_completo} onChange={(e) => setFormData({ ...formData, nome_completo: e.target.value })} placeholder="Nome do cliente" required />
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="telefone">Telefone/WhatsApp *</Label>
-              <Input
-                id="telefone"
-                type="tel"
-                value={formData.telefone}
-                onChange={(e) => setFormData({ ...formData, telefone: e.target.value })}
-                placeholder="(00) 00000-0000"
-                required
-              />
+              <Input id="telefone" type="tel" value={formData.telefone} onChange={(e) => setFormData({ ...formData, telefone: e.target.value })} placeholder="(00) 00000-0000" required />
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="email">E-mail</Label>
-              <Input
-                id="email"
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                placeholder="cliente@email.com"
-              />
+              <Input id="email" type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} placeholder="cliente@email.com" />
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="endereco">Endereço</Label>
-              <Textarea
-                id="endereco"
-                value={formData.endereco}
-                onChange={(e) => setFormData({ ...formData, endereco: e.target.value })}
-                placeholder="Rua, número, bairro, cidade..."
-                rows={3}
-              />
+              <Textarea id="endereco" value={formData.endereco} onChange={(e) => setFormData({ ...formData, endereco: e.target.value })} placeholder="Rua, número, bairro, cidade..." rows={3} />
             </div>
 
             <div className="flex gap-4 pt-4">
               <Button type="submit" disabled={loading} className="flex-1">
                 {loading ? "Cadastrando..." : "Cadastrar Cliente"}
               </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => navigate("/clientes")}
-              >
-                Cancelar
-              </Button>
+              <Button type="button" variant="outline" onClick={() => navigate("/clientes")}>Cancelar</Button>
             </div>
           </form>
         </Card>

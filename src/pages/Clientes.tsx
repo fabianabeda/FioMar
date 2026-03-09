@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import { ArrowLeft, Plus, Search, Edit, Trash2, Phone, Mail, MapPin } from "lucide-react";
+import { ArrowLeft, Plus, Search, Edit, Trash2, Phone, Mail, MapPin, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
 
 interface Cliente {
@@ -84,6 +84,13 @@ export default function Clientes() {
     }
   };
 
+  // Função para abrir o WhatsApp
+  const abrirWhatsApp = (telefone: string, nome: string) => {
+    const numeroLimpo = telefone.replace(/\D/g, '');
+    const mensagem = `Olá, ${nome}! Tudo bem?`;
+    window.open(`https://wa.me/55${numeroLimpo}?text=${encodeURIComponent(mensagem)}`, '_blank');
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -135,20 +142,20 @@ export default function Clientes() {
               <Card key={cliente.id} className="p-6 hover:shadow-lg transition-shadow">
                 <div className="space-y-3">
                   <h3 className="font-semibold text-lg">{cliente.nome_completo}</h3>
-                  
+
                   <div className="space-y-2 text-sm text-muted-foreground">
                     <div className="flex items-center gap-2">
                       <Phone className="h-4 w-4" />
                       <span>{cliente.telefone}</span>
                     </div>
-                    
+
                     {cliente.email && (
                       <div className="flex items-center gap-2">
                         <Mail className="h-4 w-4" />
                         <span className="truncate">{cliente.email}</span>
                       </div>
                     )}
-                    
+
                     {cliente.endereco && (
                       <div className="flex items-start gap-2">
                         <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0" />
@@ -158,12 +165,22 @@ export default function Clientes() {
                   </div>
 
                   <div className="flex gap-2 pt-2">
+                    {/* Botão do WhatsApp */}
+                    <Button
+                      variant="default"
+                      size="sm"
+                      className="bg-green-600 hover:bg-green-700 text-white flex-1"
+                      onClick={() => abrirWhatsApp(cliente.telefone, cliente.nome_completo)}
+                    >
+                      <MessageCircle className="h-4 w-4 mr-1" />
+                      Chat
+                    </Button>
+
                     <Button
                       variant="outline"
                       size="sm"
                       className="flex-1"
                       onClick={() => navigate(`/clientes/editar/${cliente.id}`)}
-
                     >
                       <Edit className="h-4 w-4 mr-1" />
                       Editar

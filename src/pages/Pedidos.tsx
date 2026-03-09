@@ -1,5 +1,3 @@
-// pages/Pedidos.tsx
-
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -27,21 +25,23 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
+// IMPORTAÇÃO DA LOGOMARCA
+import logoImg from "@/assets/logo-fabbis.jpeg";
+
 interface Pedido {
     id: string;
     clientes: { nome_completo: string; };
     produto: string;
     modelo_cima: string;
     modelo_baixo: string;
-    tamanho?: string; // <--- CORRIGIDO: Adicionado '?' para ser opcional
+    tamanho?: string;
     cor_frente: string;
     cor_verso: string;
     data_entrega: string;
     valor: number;
     status: string;
-    foto_url?: string | null; // <--- CORRIGIDO: Adicionado '?' para ser opcional
+    foto_url?: string | null;
 }
-
 
 const statusConfig: Record<string, { label: string; color: string }> = {
     pendente: { label: "Pendente", color: "bg-yellow-500" },
@@ -130,11 +130,24 @@ export default function Pedidos() {
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-background via-muted to-background">
+            {/* CABEÇALHO ATUALIZADO */}
             <header className="border-b bg-card/80 backdrop-blur-sm sticky top-0 z-50">
-                <div className="container mx-auto px-4 py-4">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4"><Button variant="ghost" size="sm" onClick={() => navigate("/")}><ArrowLeft className="h-4 w-4 mr-2" />Voltar</Button><h1>Pedidos</h1></div>
-                        <Button onClick={() => navigate("/pedidos/novo")}><Plus className="h-4 w-4 mr-2" />Novo Pedido</Button>
+                <div className="container mx-auto px-4 py-2 flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                        <img src={logoImg} alt="Logomarca Fabbis" className="h-32 w-auto object-contain" />
+                        <div>
+                            <p className="text-sm text-muted-foreground font-medium">Pedidos</p>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <Button variant="ghost" size="sm" onClick={() => navigate("/")}>
+                            <ArrowLeft className="h-4 w-4 mr-2" />
+                            Voltar
+                        </Button>
+                        <Button onClick={() => navigate("/pedidos/novo")}>
+                            <Plus className="h-4 w-4 mr-2" />
+                            Novo Pedido
+                        </Button>
                     </div>
                 </div>
             </header>
@@ -155,7 +168,6 @@ export default function Pedidos() {
                         {filteredPedidos.map((pedido) => (
                             <Card key={pedido.id} className="p-6 hover:shadow-lg transition-shadow">
                                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-                                    {/* EXIBE A FOTO SE ELA EXISTIR */}
                                     {pedido.foto_url && (
                                         <a href={pedido.foto_url} target="_blank" rel="noopener noreferrer" className="flex-shrink-0">
                                             <img src={pedido.foto_url} alt="Referência" className="rounded-md object-cover h-24 w-24 border" />
@@ -174,7 +186,6 @@ export default function Pedidos() {
                                         </div>
                                     </div>
 
-                                    {/* BOTÕES DE AÇÃO ATUALIZADOS */}
                                     <div className="flex items-center gap-2 self-start sm:self-center">
                                         <Button variant="outline" size="sm" onClick={() => navigate(`/pedidos/editar/${pedido.id}`)}><Edit className="h-4 w-4" /></Button>
                                         <DropdownMenu>

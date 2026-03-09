@@ -1,5 +1,3 @@
-// pages/Dashboard.tsx (VERSÃO FINAL COM NOVOS CARDS E NOMENCLATURAS)
-
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -12,14 +10,17 @@ import {
     Clock,
     Plus,
     LogOut,
-    ThumbsUp, // Ícone para "Pedidos Feitos"
-    CheckCheck, // Ícone para "Concluídos"
-    Truck, // Ícone para "Entregues"
+    ThumbsUp,
+    CheckCheck,
+    Truck,
+    DollarSign,
 } from "lucide-react";
 import { toast } from "sonner";
 import { PostgrestError } from "@supabase/supabase-js";
 
-// 1. Interface atualizada: removido 'aguardando_pagamento'
+// IMPORTAÇÃO DA LOGOMARCA
+import logoImg from "@/assets/logo-fabbis.jpeg"; // Lembre-se de mudar para .jpeg se precisar
+
 interface DashboardStats {
     total: number;
     pendente: number;
@@ -27,6 +28,7 @@ interface DashboardStats {
     concluido: number;
     entregue: number;
     totalClientes: number;
+    faturamentoMes: number;
 }
 
 export default function Dashboard() {
@@ -38,6 +40,7 @@ export default function Dashboard() {
         concluido: 0,
         entregue: 0,
         totalClientes: 0,
+        faturamentoMes: 0,
     });
     const [loading, setLoading] = useState(true);
 
@@ -56,7 +59,7 @@ export default function Dashboard() {
     const loadStats = async () => {
         try {
             const [pedidosRes, clientesRes] = await Promise.all([
-                supabase.from("pedidos").select("status"),
+                supabase.from("pedidos").select("status, valor, data_entrega"),
                 supabase.from("clientes").select("id", { count: "exact", head: true })
             ]);
 
@@ -64,7 +67,11 @@ export default function Dashboard() {
             if (clientesRes.error) throw clientesRes.error;
 
             const pedidos = pedidosRes.data || [];
-            // 2. Lógica de contagem atualizada: 'aguardando_pagamento' não é mais contado aqui
+
+            const hoje = new Date();
+            const mesAtual = hoje.getMonth();
+            const anoAtual = hoje.getFullYear();
+
             const newStats = {
                 total: pedidos.length,
                 pendente: pedidos.filter(p => p.status === "pendente").length,
@@ -72,7 +79,17 @@ export default function Dashboard() {
                 concluido: pedidos.filter(p => p.status === "concluido").length,
                 entregue: pedidos.filter(p => p.status === "entregue").length,
                 totalClientes: clientesRes.count || 0,
+                faturamentoMes: 0,
             };
+
+            pedidos.forEach(p => {
+                const dataEntrega = new Date(p.data_entrega);
+                dataEntrega.setMinutes(dataEntrega.getMinutes() + dataEntrega.getTimezoneOffset());
+
+                if (dataEntrega.getMonth() === mesAtual && dataEntrega.getFullYear() === anoAtual && p.status !== 'cancelado') {
+                    newStats.faturamentoMes += Number(p.valor) || 0;
+                }
+            });
 
             setStats(newStats);
         } catch (error) {
@@ -93,12 +110,16 @@ export default function Dashboard() {
         navigate(`/pedidos?status=${status}`);
     };
 
+    const formatarDinheiro = (valor: number) => {
+        return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
+    };
+
     if (loading) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-muted to-background">
                 <div className="text-center">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-                    <p className="text-muted-foreground">Carregando...</p>
+                    <p className="text-muted-foreground">A carregar...</p>
                 </div>
             </div>
         );
@@ -107,12 +128,12 @@ export default function Dashboard() {
     return (
         <div className="min-h-screen bg-gradient-to-br from-background via-muted to-background">
             <header className="border-b bg-card/80 backdrop-blur-sm sticky top-0 z-50">
-                <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-                    <div>
-                        <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-                            FioMar
-                        </h1>
-                        <p className="text-sm text-muted-foreground">Gestão de Pedidos</p>
+                <div className="container mx-auto px-4 py-2 flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                        <img src={logoImg} alt="Logomarca Fabbis" className="h-32 w-auto object-contain" />
+                        <div>
+                            <p className="text-sm text-muted-foreground font-medium">Gestão de Pedidos</p>
+                        </div>
                     </div>
                     <Button variant="ghost" size="sm" onClick={handleLogout}>
                         <LogOut className="h-4 w-4 mr-2" />
@@ -127,7 +148,6 @@ export default function Dashboard() {
                     <p className="text-muted-foreground">Visão geral dos seus pedidos e clientes</p>
                 </div>
 
-                {/* 3. Grid de cards principais atualizado */}
                 <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 mb-8">
                     <Card onClick={() => navigateToPedidos('all')} className="p-6 bg-gradient-to-br from-card to-card/50 border-primary/20 hover:shadow-lg transition-shadow cursor-pointer">
                         <div className="flex items-center justify-between mb-4"><Package className="h-8 w-8 text-primary" /><Badge variant="secondary">{stats.total}</Badge></div>
@@ -167,7 +187,6 @@ export default function Dashboard() {
 
                     <Card className="p-6">
                         <h3 className="text-lg font-semibold mb-4">Resumo de Status</h3>
-                        {/* 4. Lista de resumo atualizada */}
                         <div className="space-y-3">
                             <div className="flex items-center justify-between cursor-pointer hover:bg-muted/50 p-2 rounded-md" onClick={() => navigateToPedidos('pendente')}>
                                 <span className="text-sm text-muted-foreground">Pedidos Feitos</span>
@@ -188,6 +207,26 @@ export default function Dashboard() {
                         </div>
                     </Card>
                 </div>
+
+                {/* --- CARD DE FATURAMENTO MOVIDO PARA O FINAL --- */}
+                <div className="mt-8">
+                    <Card className="p-6 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950 dark:to-green-900 border-green-500/30">
+                        <div className="flex items-center gap-4">
+                            <div className="p-4 bg-green-500 rounded-full text-white">
+                                <DollarSign className="h-8 w-8" />
+                            </div>
+                            <div>
+                                <h3 className="text-sm font-medium text-green-800 dark:text-green-200 mb-1">
+                                    Faturação do Mês Atual (Entregas previstas para este mês)
+                                </h3>
+                                <p className="text-4xl font-bold text-green-700 dark:text-green-400">
+                                    {formatarDinheiro(stats.faturamentoMes)}
+                                </p>
+                            </div>
+                        </div>
+                    </Card>
+                </div>
+
             </main>
         </div>
     );
