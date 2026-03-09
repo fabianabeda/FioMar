@@ -12,7 +12,6 @@ import { PostgrestError } from "@supabase/supabase-js";
 
 // IMPORTAÇÃO DA LOGOMARCA
 import logoImg from "@/assets/logo-fabbis.jpeg";
-
 interface ClienteData {
     nome_completo: string;
     telefone: string;
@@ -76,6 +75,27 @@ export default function EditarCliente() {
         }
     };
 
+    // --- NOVA FUNÇÃO QUE FORMATA O TELEFONE AUTOMATICAMENTE ---
+    const formatarTelefone = (valor: string) => {
+        if (!valor) return "";
+        const apenasNumeros = valor.replace(/\D/g, "").substring(0, 11);
+
+        let formatado = apenasNumeros;
+        if (apenasNumeros.length > 2) {
+            formatado = `(${apenasNumeros.substring(0, 2)}) ${apenasNumeros.substring(2)}`;
+        }
+        if (apenasNumeros.length > 7) {
+            formatado = `(${apenasNumeros.substring(0, 2)}) ${apenasNumeros.substring(2, 7)}-${apenasNumeros.substring(7)}`;
+        }
+        return formatado;
+    };
+
+    const handleTelefoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const telefoneFormatado = formatarTelefone(e.target.value);
+        setFormData({ ...formData, telefone: telefoneFormatado });
+    };
+    // ----------------------------------------------------------
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
@@ -117,7 +137,6 @@ export default function EditarCliente() {
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-background via-muted to-background">
-            {/* CABEÇALHO ATUALIZADO */}
             <header className="border-b bg-card/80 backdrop-blur-sm sticky top-0 z-50">
                 <div className="container mx-auto px-4 py-2 flex items-center justify-between">
                     <div className="flex items-center gap-4">
@@ -157,7 +176,7 @@ export default function EditarCliente() {
                                 id="telefone"
                                 type="tel"
                                 value={formData.telefone}
-                                onChange={(e) => setFormData({ ...formData, telefone: e.target.value })}
+                                onChange={handleTelefoneChange} // <-- Usando a função nova aqui
                                 required
                             />
                         </div>
