@@ -6,7 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Waves } from "lucide-react";
+
+// IMPORTAÇÃO DA LOGOMARCA
+import logoImg from "@/assets/logo-fabbis.jpeg"; // Altere para .png se for o arquivo com fundo transparente
 
 export default function Auth() {
   const navigate = useNavigate();
@@ -63,19 +65,17 @@ export default function Auth() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-background to-secondary/10 p-4">
       <Card className="w-full max-w-md p-8 space-y-6">
-        <div className="text-center space-y-2">
-          <div className="flex items-center justify-center mb-4">
-            <Waves className="h-12 w-12 text-primary" />
-          </div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-            FioMar
-          </h1>
-          <p className="text-muted-foreground">
+        {/* CONTAINER DO TOPO - ESPAÇAMENTO AJUSTADO */}
+        <div className="text-center flex flex-col items-center">
+
+          <img src={logoImg} alt="Logomarca Fabbis" className="h-48 w-auto object-contain" />
+
+          <p className="text-muted-foreground mt-2 font-medium">
             {isLogin ? "Entre na sua conta" : "Crie sua conta"}
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4 mt-6">
           <div className="space-y-2">
             <Label htmlFor="email">E-mail</Label>
             <Input
