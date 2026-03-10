@@ -20,10 +20,14 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ArrowLeft, Plus, Search, Edit, Trash2, MoreVertical, Package, Clock } from "lucide-react";
+import { ArrowLeft, Plus, Search, Edit, Trash2, MoreVertical, Package, Clock, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+
+// --- NOVOS IMPORTS PARA O RELATÓRIO ---
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 import logoImg from "@/assets/logo-fabbis.jpeg";
 
@@ -54,12 +58,10 @@ export default function Pedidos() {
     const navigate = useNavigate();
     const [searchParams, setSearchParams] = useSearchParams();
 
-    // ESTADOS
     const [pedidos, setPedidos] = useState<Pedido[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
 
-    // PEGA O STATUS DIRETO DA URL O TEMPO TODO
     const currentStatus = searchParams.get("status") || "all";
 
     useEffect(() => {
@@ -88,7 +90,6 @@ export default function Pedidos() {
         }
     };
 
-    // LÓGICA DE FILTRO "VIVA" (recalcula sempre que currentStatus ou pedidos mudam)
     const filteredPedidos = useMemo(() => {
         return pedidos.filter((p) => {
             const matchesSearch = p.clientes?.nome_completo?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -96,6 +97,51 @@ export default function Pedidos() {
             return matchesSearch && matchesStatus;
         });
     }, [pedidos, searchTerm, currentStatus]);
+
+    // --- FUNÇÃO PARA GERAR O PDF ---
+    const gerarRelatorio = () => {
+        if (filteredPedidos.length === 0) {
+            toast.error("Não há dados para gerar o relatório.");
+            return;
+        }
+
+        const doc = new jsPDF();
+        const dataHoje = format(new Date(), "dd/MM/yyyy HH:mm");
+        const totalFaturado = filteredPedidos.reduce((acc, p) => acc + Number(p.valor), 0);
+
+        // Cabeçalho do PDF
+        doc.setFontSize(18);
+        doc.setTextColor(33, 33, 33);
+        doc.text("Relatório Fabbis - Gestão de Pedidos", 14, 20);
+
+        doc.setFontSize(10);
+        doc.setTextColor(100, 100, 100);
+        doc.text(`Gerado em: ${dataHoje}`, 14, 28);
+        doc.text(`Filtro atual: ${currentStatus === 'all' ? 'Todos' : statusConfig[currentStatus]?.label}`, 14, 33);
+
+        // Tabela de Dados
+        const colunas = ["Cliente", "Peça", "Entrega", "Status", "Valor"];
+        const linhas = filteredPedidos.map(p => [
+            p.clientes?.nome_completo || "S/ Nome",
+            `${p.produto} (${p.tamanho})`,
+            format(new Date(p.data_entrega), "dd/MM/yyyy"),
+            statusConfig[p.status]?.label || p.status,
+            `R$ ${Number(p.valor).toFixed(2)}`
+        ]);
+
+        autoTable(doc, {
+            head: [colunas],
+            body: linhas,
+            startY: 40,
+            styles: { fontSize: 9 },
+            headStyles: { fillColor: [0, 0, 0] }, // Preto elegante
+            foot: [["", "", "", "TOTAL:", `R$ ${totalFaturado.toFixed(2)}`]],
+            footStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0], fontStyle: 'bold' }
+        });
+
+        doc.save(`relatorio-fabbis-${format(new Date(), "yyyy-MM-dd")}.pdf`);
+        toast.success("PDF gerado com sucesso!");
+    };
 
     const handleStatusChange = async (pedidoId: string, newStatus: string) => {
         try {
@@ -114,7 +160,7 @@ export default function Pedidos() {
         loadPedidos();
     };
 
-    if (loading) return <div className="min-h-screen flex items-center justify-center animate-pulse">Carregando...</div>;
+    if (loading) return <div className="min-h-screen flex items-center justify-center">Carregando...</div>;
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-background via-muted to-background pb-10">
@@ -123,7 +169,13 @@ export default function Pedidos() {
                     <img src={logoImg} alt="Fabbis" className="h-24 w-auto object-contain cursor-pointer" onClick={() => navigate("/")} />
                     <div className="flex items-center gap-2">
                         <Button variant="ghost" size="sm" onClick={() => navigate("/")}><ArrowLeft className="h-4 w-4 mr-2" /> Voltar</Button>
-                        <Button onClick={() => navigate("/pedidos/novo")} size="sm"><Plus className="h-4 w-4 mr-2" /> Novo Pedido</Button>
+
+                        {/* BOTÃO DE RELATÓRIO */}
+                        <Button variant="outline" size="sm" onClick={gerarRelatorio} className="border-primary text-primary hover:bg-primary/5">
+                            <FileText className="h-4 w-4 mr-2" /> Relatório
+                        </Button>
+
+                        <Button onClick={() => navigate("/pedidos/novo")} size="sm"><Plus className="h-4 w-4 mr-2" /> Novo</Button>
                     </div>
                 </div>
             </header>
@@ -140,7 +192,7 @@ export default function Pedidos() {
                         onValueChange={(val) => setSearchParams({ status: val })}
                     >
                         <SelectTrigger className="w-full sm:w-[200px] h-11">
-                            <SelectValue placeholder="Filtrar por status" />
+                            <SelectValue placeholder="Status" />
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="all">Todos os Pedidos</SelectItem>
@@ -153,7 +205,7 @@ export default function Pedidos() {
 
                 <div className="grid gap-4">
                     {filteredPedidos.length === 0 ? (
-                        <Card className="p-10 text-center text-muted-foreground">Nenhum pedido encontrado nesta categoria.</Card>
+                        <Card className="p-10 text-center text-muted-foreground">Nenhum pedido encontrado.</Card>
                     ) : (
                         filteredPedidos.map((pedido) => (
                             <Card key={pedido.id} className="p-5 border-l-4" style={{ borderLeftColor: `var(--${statusConfig[pedido.status]?.color})` }}>
