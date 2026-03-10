@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState, useMemo } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,12 +20,11 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ArrowLeft, Plus, Search, Edit, Trash2, MoreVertical } from "lucide-react";
+import { ArrowLeft, Plus, Search, Edit, Trash2, MoreVertical, Package, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
-// IMPORTAÇÃO DA LOGOMARCA
 import logoImg from "@/assets/logo-fabbis.jpeg";
 
 interface Pedido {
@@ -53,20 +52,20 @@ const statusConfig: Record<string, { label: string; color: string }> = {
 
 export default function Pedidos() {
     const navigate = useNavigate();
+    const [searchParams, setSearchParams] = useSearchParams();
+
+    // ESTADOS
     const [pedidos, setPedidos] = useState<Pedido[]>([]);
-    const [filteredPedidos, setFilteredPedidos] = useState<Pedido[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
-    const [statusFilter, setStatusFilter] = useState<string>("all");
+
+    // PEGA O STATUS DIRETO DA URL O TEMPO TODO
+    const currentStatus = searchParams.get("status") || "all";
 
     useEffect(() => {
         checkAuth();
         loadPedidos();
     }, []);
-
-    useEffect(() => {
-        filterPedidos();
-    }, [searchTerm, statusFilter, pedidos]);
 
     const checkAuth = async () => {
         const { data: { session } } = await supabase.auth.getSession();
@@ -76,7 +75,10 @@ export default function Pedidos() {
     const loadPedidos = async () => {
         setLoading(true);
         try {
-            const { data, error } = await supabase.from("pedidos").select(`*, clientes (nome_completo)`).order("data_entrega", { ascending: true });
+            const { data, error } = await supabase
+                .from("pedidos")
+                .select(`*, clientes (nome_completo)`)
+                .order("data_entrega", { ascending: true });
             if (error) throw error;
             setPedidos(data || []);
         } catch (error) {
@@ -86,123 +88,109 @@ export default function Pedidos() {
         }
     };
 
-    const filterPedidos = () => {
-        let filtered = [...pedidos];
-        if (searchTerm) {
-            filtered = filtered.filter((p) => p.clientes.nome_completo.toLowerCase().includes(searchTerm.toLowerCase()));
-        }
-        if (statusFilter !== "all") {
-            filtered = filtered.filter((p) => p.status === statusFilter);
-        }
-        setFilteredPedidos(filtered);
-    };
-
-    const handleDelete = async (id: string) => {
-        if (!confirm("Tem certeza que deseja excluir este pedido?")) return;
-        try {
-            const { error } = await supabase.from("pedidos").delete().eq("id", id);
-            if (error) throw error;
-            toast.success("Pedido excluído com sucesso");
-            loadPedidos();
-        } catch (error) {
-            toast.error("Erro ao excluir pedido");
-        }
-    };
+    // LÓGICA DE FILTRO "VIVA" (recalcula sempre que currentStatus ou pedidos mudam)
+    const filteredPedidos = useMemo(() => {
+        return pedidos.filter((p) => {
+            const matchesSearch = p.clientes?.nome_completo?.toLowerCase().includes(searchTerm.toLowerCase());
+            const matchesStatus = currentStatus === "all" || p.status === currentStatus;
+            return matchesSearch && matchesStatus;
+        });
+    }, [pedidos, searchTerm, currentStatus]);
 
     const handleStatusChange = async (pedidoId: string, newStatus: string) => {
         try {
             const { error } = await supabase.from("pedidos").update({ status: newStatus }).eq("id", pedidoId);
             if (error) throw error;
-            toast.success(`Pedido atualizado para "${statusConfig[newStatus].label}"`);
+            toast.success("Status atualizado");
             loadPedidos();
         } catch (error) {
-            toast.error("Erro ao atualizar status do pedido.");
+            toast.error("Erro ao atualizar status");
         }
     };
 
-    if (loading) {
-        return (
-            <div className="min-h-screen flex items-center justify-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-            </div>
-        );
-    }
+    const handleDelete = async (id: string) => {
+        if (!confirm("Excluir pedido?")) return;
+        await supabase.from("pedidos").delete().eq("id", id);
+        loadPedidos();
+    };
+
+    if (loading) return <div className="min-h-screen flex items-center justify-center animate-pulse">Carregando...</div>;
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-background via-muted to-background">
-            {/* CABEÇALHO ATUALIZADO */}
+        <div className="min-h-screen bg-gradient-to-br from-background via-muted to-background pb-10">
             <header className="border-b bg-card/80 backdrop-blur-sm sticky top-0 z-50">
                 <div className="container mx-auto px-4 py-2 flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                        <img src={logoImg} alt="Logomarca Fabbis" className="h-32 w-auto object-contain" />
-                        <div>
-                            <p className="text-sm text-muted-foreground font-medium">Pedidos</p>
-                        </div>
-                    </div>
+                    <img src={logoImg} alt="Fabbis" className="h-24 w-auto object-contain cursor-pointer" onClick={() => navigate("/")} />
                     <div className="flex items-center gap-2">
-                        <Button variant="ghost" size="sm" onClick={() => navigate("/")}>
-                            <ArrowLeft className="h-4 w-4 mr-2" />
-                            Voltar
-                        </Button>
-                        <Button onClick={() => navigate("/pedidos/novo")}>
-                            <Plus className="h-4 w-4 mr-2" />
-                            Novo Pedido
-                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => navigate("/")}><ArrowLeft className="h-4 w-4 mr-2" /> Voltar</Button>
+                        <Button onClick={() => navigate("/pedidos/novo")} size="sm"><Plus className="h-4 w-4 mr-2" /> Novo Pedido</Button>
                     </div>
                 </div>
             </header>
 
             <main className="container mx-auto px-4 py-8">
                 <div className="mb-6 flex flex-col sm:flex-row gap-4">
-                    <div className="relative flex-1"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Buscar por cliente..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9" /></div>
-                    <Select value={statusFilter} onValueChange={setStatusFilter}>
-                        <SelectTrigger className="w-full sm:w-[200px]"><SelectValue placeholder="Filtrar por status" /></SelectTrigger>
-                        <SelectContent><SelectItem value="all">Todos</SelectItem>{Object.keys(statusConfig).map(key => <SelectItem key={key} value={key}>{statusConfig[key].label}</SelectItem>)}</SelectContent>
+                    <div className="relative flex-1">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input placeholder="Buscar cliente..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9 h-11" />
+                    </div>
+
+                    <Select
+                        value={currentStatus}
+                        onValueChange={(val) => setSearchParams({ status: val })}
+                    >
+                        <SelectTrigger className="w-full sm:w-[200px] h-11">
+                            <SelectValue placeholder="Filtrar por status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">Todos os Pedidos</SelectItem>
+                            {Object.keys(statusConfig).map(key => (
+                                <SelectItem key={key} value={key}>{statusConfig[key].label}</SelectItem>
+                            ))}
+                        </SelectContent>
                     </Select>
                 </div>
 
-                {filteredPedidos.length === 0 ? (
-                    <Card className="p-12 text-center"><p className="text-muted-foreground">Nenhum pedido encontrado</p></Card>
-                ) : (
-                    <div className="grid gap-4">
-                        {filteredPedidos.map((pedido) => (
-                            <Card key={pedido.id} className="p-6 hover:shadow-lg transition-shadow">
-                                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-                                    {pedido.foto_url && (
-                                        <a href={pedido.foto_url} target="_blank" rel="noopener noreferrer" className="flex-shrink-0">
-                                            <img src={pedido.foto_url} alt="Referência" className="rounded-md object-cover h-24 w-24 border" />
-                                        </a>
-                                    )}
-                                    <div className="flex-1">
-                                        <div className="flex items-center gap-3 mb-2">
-                                            <h3 className="font-semibold text-lg">{pedido.clientes.nome_completo}</h3>
-                                            <Badge className={`${statusConfig[pedido.status]?.color || 'bg-gray-400'} text-white`}>{statusConfig[pedido.status]?.label || pedido.status}</Badge>
-                                        </div>
-                                        <div className="space-y-1 text-sm text-muted-foreground">
-                                            <p><span className="font-medium">Produto:</span> {pedido.produto} ({pedido.tamanho}) - {pedido.modelo_cima} / {pedido.modelo_baixo}</p>
-                                            <p><span className="font-medium">Cores:</span> {pedido.cor_frente} / {pedido.cor_verso}</p>
-                                            <p><span className="font-medium">Entrega:</span> {format(new Date(pedido.data_entrega), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}</p>
-                                            <p><span className="font-medium">Valor:</span> R$ {Number(pedido.valor).toFixed(2)}</p>
-                                        </div>
+                <div className="grid gap-4">
+                    {filteredPedidos.length === 0 ? (
+                        <Card className="p-10 text-center text-muted-foreground">Nenhum pedido encontrado nesta categoria.</Card>
+                    ) : (
+                        filteredPedidos.map((pedido) => (
+                            <Card key={pedido.id} className="p-5 border-l-4" style={{ borderLeftColor: `var(--${statusConfig[pedido.status]?.color})` }}>
+                                <div className="flex flex-col md:flex-row gap-6 items-center">
+                                    <div className="h-24 w-24 bg-muted rounded-lg overflow-hidden border">
+                                        {pedido.foto_url ? <img src={pedido.foto_url} className="h-full w-full object-cover" /> : <Package className="h-full w-full p-6 opacity-20" />}
                                     </div>
-
-                                    <div className="flex items-center gap-2 self-start sm:self-center">
-                                        <Button variant="outline" size="sm" onClick={() => navigate(`/pedidos/editar/${pedido.id}`)}><Edit className="h-4 w-4" /></Button>
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger asChild><Button variant="ghost" size="sm" className="h-8 w-8 p-0"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end">
-                                                <DropdownMenuLabel>Mudar Status</DropdownMenuLabel>
-                                                {Object.keys(statusConfig).map((statusKey) => (<DropdownMenuItem key={statusKey} disabled={pedido.status === statusKey} onClick={() => handleStatusChange(pedido.id, statusKey)}>{statusConfig[statusKey].label}</DropdownMenuItem>))}
-                                                <DropdownMenuSeparator />
-                                                <DropdownMenuItem className="text-red-600" onClick={() => handleDelete(pedido.id)}><Trash2 className="mr-2 h-4 w-4" /><span>Excluir</span></DropdownMenuItem>
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
+                                    <div className="flex-1 text-center md:text-left">
+                                        <div className="flex flex-col md:flex-row items-center gap-2 mb-2">
+                                            <h3 className="font-bold text-lg">{pedido.clientes?.nome_completo}</h3>
+                                            <Badge className={`${statusConfig[pedido.status]?.color} text-white border-none`}>{statusConfig[pedido.status]?.label}</Badge>
+                                        </div>
+                                        <p className="text-sm text-muted-foreground">{pedido.produto} - {pedido.modelo_cima}/{pedido.modelo_baixo}</p>
+                                        <p className="text-xs flex items-center justify-center md:justify-start gap-1 mt-1 font-medium"><Clock className="h-3 w-3" /> {format(new Date(pedido.data_entrega), "dd/MM/yyyy")}</p>
+                                    </div>
+                                    <div className="flex flex-col items-center md:items-end gap-2">
+                                        <p className="font-black text-xl text-primary">R$ {Number(pedido.valor).toFixed(2)}</p>
+                                        <div className="flex gap-2">
+                                            <Button variant="outline" size="sm" onClick={() => navigate(`/pedidos/editar/${pedido.id}`)}><Edit className="h-4 w-4" /></Button>
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild><Button variant="ghost" size="sm" className="border h-8 w-8 p-0"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end">
+                                                    <DropdownMenuLabel>Mudar Status</DropdownMenuLabel>
+                                                    {Object.keys(statusConfig).map(k => (
+                                                        <DropdownMenuItem key={k} onClick={() => handleStatusChange(pedido.id, k)}>{statusConfig[k].label}</DropdownMenuItem>
+                                                    ))}
+                                                    <DropdownMenuSeparator />
+                                                    <DropdownMenuItem className="text-red-600" onClick={() => handleDelete(pedido.id)}>Excluir</DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        </div>
                                     </div>
                                 </div>
                             </Card>
-                        ))}
-                    </div>
-                )}
+                        ))
+                    )}
+                </div>
             </main>
         </div>
     );

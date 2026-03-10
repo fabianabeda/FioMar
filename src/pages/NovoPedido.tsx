@@ -176,9 +176,6 @@ export default function NovoPedido() {
                 <div className="container mx-auto px-4 py-2 flex items-center justify-between">
                     <div className="flex items-center gap-4">
                         <img src={logoImg} alt="Logomarca Fabbis" className="h-32 w-auto object-contain" />
-                        <div>
-                            <p className="text-sm text-muted-foreground font-medium">Novo Pedido</p>
-                        </div>
                     </div>
                     <Button variant="ghost" size="sm" onClick={() => navigate("/pedidos")}>
                         <ArrowLeft className="h-4 w-4 mr-2" />
@@ -190,7 +187,6 @@ export default function NovoPedido() {
             <main className="container mx-auto px-4 py-8 max-w-2xl">
                 <div className="mb-8">
                     <h1 className="text-3xl font-bold mb-2">Novo Pedido</h1>
-                    <p className="text-muted-foreground">Preencha os dados conforme o bloco da Fabbis</p>
                 </div>
 
                 <Card className="p-6">

@@ -7,6 +7,9 @@ import { Card } from "@/components/ui/card";
 import { ArrowLeft, Plus, Search, Edit, Trash2, Phone, Mail, MapPin, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
 
+// --- ADICIONEI A IMPORTAÇÃO QUE FALTAVA ---
+import logoImg from "@/assets/logo-fabbis.jpeg";
+
 interface Cliente {
   id: string;
   nome_completo: string;
@@ -84,7 +87,6 @@ export default function Clientes() {
     }
   };
 
-  // Função para abrir o WhatsApp
   const abrirWhatsApp = (telefone: string, nome: string) => {
     const numeroLimpo = telefone.replace(/\D/g, '');
     const mensagem = `Olá, ${nome}! Tudo bem?`;
@@ -104,22 +106,30 @@ export default function Clientes() {
       <header className="border-b bg-card/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
+            {/* LOGO */}
+            <div className="flex items-center gap-4">
+                <img src={logoImg} alt="Logomarca Fabbis" className="h-20 w-auto object-contain" />
+            </div>
+
             <div className="flex items-center gap-4">
               <Button variant="ghost" size="sm" onClick={() => navigate("/")}>
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Voltar
               </Button>
-              <h1 className="text-xl font-bold">Clientes</h1>
+
+              <Button onClick={() => navigate("/clientes/novo")}>
+                <Plus className="h-4 w-4 mr-2" />
+                Novo Cliente
+              </Button>
             </div>
-            <Button onClick={() => navigate("/clientes/novo")}>
-              <Plus className="h-4 w-4 mr-2" />
-              Novo Cliente
-            </Button>
           </div>
         </div>
       </header>
 
       <main className="container mx-auto px-4 py-8">
+       <div className="mb-8">
+           <h1 className="text-3xl font-bold mb-2">Clientes</h1>
+         </div>
         <div className="mb-6">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -165,7 +175,6 @@ export default function Clientes() {
                   </div>
 
                   <div className="flex gap-2 pt-2">
-                    {/* Botão do WhatsApp */}
                     <Button
                       variant="default"
                       size="sm"
