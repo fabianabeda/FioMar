@@ -202,6 +202,7 @@ export default function Dashboard() {
                         <h3 className="text-sm font-medium text-muted-foreground mb-1">Entregues</h3><p className="text-2xl font-bold">{stats.entregue}</p>
                     </Card>
                 </div>
+
                 {/* --- SEÇÃO 2: AÇÕES E GASTOS --- */}
                 <div className="grid gap-6 md:grid-cols-2 mb-8">
                     <Card className="p-6">
