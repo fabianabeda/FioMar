@@ -52,13 +52,15 @@ export default function Dashboard() {
 
 
     useEffect(() => {
-        const checkUser = async () => {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) {
-                navigate("/auth");
-            }
-        };
-        checkUser();
+      const checkUser = async () => {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          navigate("/auth"); // Se não tem sessão, volta pro login
+        } else {
+          setLoading(false); // Só para de carregar se tiver sessão!
+        }
+      };
+      checkUser();
     }, [navigate]);
 
     const checkAuth = async () => {
