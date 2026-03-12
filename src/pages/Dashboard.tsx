@@ -129,24 +129,19 @@ export default function Dashboard() {
     };
 
     const handleLogout = async () => {
-        try {
-            // 1. Avisa o Supabase para encerrar a sessão
-            const { error } = await supabase.auth.signOut();
-            if (error) throw error;
+      try {
+        // Tenta avisar o Supabase, mas não espera uma resposta eterna
+        await supabase.auth.signOut();
+      } catch (e) {
+        console.log("Erro ao deslogar no servidor, limpando localmente...");
+      } finally {
+        // Limpa os dados salvos no navegador da Fabi
+        localStorage.clear();
+        sessionStorage.clear();
 
-            // 2. Limpa qualquer rastro no navegador (LocalStorage)
-            localStorage.clear();
-            sessionStorage.clear();
-
-            // 3. Força o redirecionamento para o login
-            // Usamos o window.location para garantir que a página dê um "refresh" total
-            window.location.href = "/auth";
-
-            toast.success("Até logo, Fabi!");
-        } catch (error) {
-            toast.error("Erro ao sair. Tente fechar o navegador.");
-            console.error("Erro logout:", error);
-        }
+        // Força o redirecionamento para a tela de login
+        window.location.href = "/auth";
+      }
     };
 
     const formatarDinheiro = (valor: number) => {
