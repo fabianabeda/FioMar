@@ -18,10 +18,10 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import {
-    ArrowLeft, Plus, Search, Edit, Package, Clock, Eye, MessageCircle, AlertTriangle, RotateCcw
+    ArrowLeft, Plus, Search, Edit, Package, Clock, Eye, MessageCircle, AlertTriangle, RotateCcw, Send, CheckCircle2
 } from "lucide-react";
 import { toast } from "sonner";
-import { format, isBefore, addDays, startOfDay } from "date-fns";
+import { format, isBefore, isSameDay, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 import logoImg from "@/assets/logo-fabbis.jpeg";
@@ -88,9 +88,36 @@ export default function Pedidos() {
         });
     }, [pedidos, searchTerm, currentStatus]);
 
-    const handleWhatsApp = (telefone: string, nome: string) => {
-        const cleanPhone = telefone.replace(/\D/g, "");
-        window.open(`https://wa.me/55${cleanPhone}`, "_blank");
+    // MELHORIA 2: MENSAGEM PERSONALIZADA DE WHATSAPP
+    const handleWhatsAppNotificacao = (p: Pedido) => {
+        const cleanPhone = p.clientes?.telefone?.replace(/\D/g, "");
+        const nomeCliente = p.clientes?.nome_completo.split(' ')[0];
+
+        let mensagem = "";
+
+        if (p.status === 'concluido') {
+            mensagem = `Olá, ${nomeCliente}! ✨%0A%0ASeu pedido de *${p.produto}* da *Fabbis* já está prontinho! 👙%0A%0A*Valor:* R$ ${Number(p.valor).toFixed(2)}%0A%0AComo você prefere retirar?`;
+        } else {
+            mensagem = `Olá, ${nomeCliente}! ✨%0A%0AEstou passando para confirmar seu pedido de *${p.produto}* na *Fabbis*. Ele está com entrega prevista para o dia *${format(parseISO(p.data_entrega), "dd/MM/yyyy")}*! 👙`;
+        }
+
+        window.open(`https://wa.me/55${cleanPhone}?text=${mensagem}`, "_blank");
+    };
+
+    // MELHORIA 1: LÓGICA DE CORES PARA PRAZO
+    const getEstiloPrazo = (dataStr: string, status: string) => {
+        if (status === 'entregue' || status === 'cancelado') return "text-slate-400";
+
+        const hoje = new Date();
+        const dataEntrega = parseISO(dataStr);
+
+        if (isBefore(dataEntrega, hoje) && !isSameDay(dataEntrega, hoje)) {
+            return "text-red-600 font-black animate-pulse flex items-center gap-1"; // ATRASADO
+        }
+        if (isSameDay(dataEntrega, hoje)) {
+            return "text-amber-600 font-black flex items-center gap-1"; // ENTREGA HOJE
+        }
+        return "text-slate-500";
     };
 
     const updateStatus = async (id: string, newStatus: string) => {
@@ -106,7 +133,6 @@ export default function Pedidos() {
 
     return (
         <div className="min-h-screen bg-slate-50 pb-10">
-            {/* CABEÇALHO */}
             <header className="border-b bg-white sticky top-0 z-40 shadow-sm">
                 <div className="container mx-auto px-4 py-2 flex items-center justify-between">
                     <img src={logoImg} alt="Fabbis" className="h-14 w-auto cursor-pointer" onClick={() => navigate("/")} />
@@ -118,15 +144,14 @@ export default function Pedidos() {
             </header>
 
             <main className="container mx-auto px-4 py-6 max-w-5xl">
-                {/* BUSCA E FILTRO */}
                 <div className="flex flex-col md:flex-row gap-3 mb-6">
                     <div className="relative flex-1">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                        <Input
+                        <input
                             placeholder="Buscar cliente..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="pl-10 h-11 rounded-xl border-slate-200 bg-white"
+                            className="w-full pl-10 h-11 rounded-xl border border-slate-200 bg-white px-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                     </div>
                     <Select value={currentStatus} onValueChange={(val) => setSearchParams({ status: val })}>
@@ -140,11 +165,12 @@ export default function Pedidos() {
                     </Select>
                 </div>
 
-                {/* LISTA DE PEDIDOS */}
                 <div className="grid gap-3">
                     {filteredPedidos.length > 0 ? (
                         filteredPedidos.map((pedido) => {
                             const config = statusConfig[pedido.status] || statusConfig.pendente;
+                            const estiloPrazo = getEstiloPrazo(pedido.data_entrega, pedido.status);
+
                             return (
                                 <Card
                                     key={pedido.id}
@@ -164,8 +190,10 @@ export default function Pedidos() {
                                         </div>
                                         <div className="text-right">
                                             <p className="font-black text-slate-900 text-lg">R$ {Number(pedido.valor).toFixed(2)}</p>
-                                            <p className="text-[10px] text-slate-400 font-bold flex items-center justify-end gap-1 uppercase">
-                                                <Clock className="h-3 w-3" /> {format(new Date(pedido.data_entrega), "dd/MM/yyyy")}
+                                            <p className={`text-[10px] font-bold flex items-center justify-end gap-1 uppercase ${estiloPrazo}`}>
+                                                <Clock className="h-3 w-3" />
+                                                {format(parseISO(pedido.data_entrega), "dd/MM/yyyy")}
+                                                {estiloPrazo.includes('red') && " ⚠️"}
                                             </p>
                                         </div>
                                     </div>
@@ -178,47 +206,33 @@ export default function Pedidos() {
                 </div>
             </main>
 
-            {/* MODAL: EXATAMENTE IGUAL ÀS IMAGENS */}
             <Dialog open={modalAberto} onOpenChange={setModalAberto}>
-                <DialogContent className="max-w-4xl p-0 border-none bg-white rounded-2xl overflow-hidden shadow-2xl" hideCloseButton>
+                <DialogContent className="max-w-4xl p-0 border-none bg-white rounded-2xl overflow-hidden shadow-2xl">
                     {pedidoSelecionado && (() => {
-                        const p = pedidoSelecionado as any;
+                        const p = pedidoSelecionado;
                         const config = statusConfig[p.status] || statusConfig.pendente;
 
                         return (
                             <div className="flex flex-col max-h-[90vh] overflow-y-auto">
-
-                                {/* CABEÇALHO AZUL VIBRANTE */}
                                 <div className="bg-[#3B82F6] p-6 text-white relative">
-                                    <Button
-                                        variant="ghost"
-                                        className="absolute top-4 right-4 text-white hover:bg-white/20 rounded-full h-8 w-8 p-0"
-                                        onClick={() => setModalAberto(false)}
-                                    >
-                                        X
-                                    </Button>
                                     <p className="text-[10px] font-bold uppercase tracking-widest opacity-90 mb-1">Ficha de Produção</p>
                                     <DialogTitle className="text-3xl font-black">{p.clientes?.nome_completo}</DialogTitle>
-                                    <Badge className="absolute top-6 right-16 bg-white/20 hover:bg-white/30 text-white border-none font-bold">
+                                    <Badge className="absolute top-6 right-6 bg-white/20 hover:bg-white/30 text-white border-none font-bold">
                                         {config.label}
                                     </Badge>
                                 </div>
 
                                 <div className="p-6 space-y-6 bg-white">
-                                    {/* BOTÃO WHATSAPP VERDE VIVO */}
                                     <Button
-                                        className="w-full bg-[#22C55E] hover:bg-[#16A34A] text-white font-black text-sm h-14 rounded-xl shadow-sm uppercase tracking-wider"
-                                        onClick={() => handleWhatsApp(p.clientes?.telefone, p.clientes?.nome_completo)}
+                                        className={`w-full ${p.status === 'concluido' ? 'bg-green-600' : 'bg-[#22C55E]'} hover:opacity-90 text-white font-black text-sm h-14 rounded-xl shadow-sm uppercase tracking-wider`}
+                                        onClick={() => handleWhatsAppNotificacao(p)}
                                     >
-                                        <MessageCircle className="h-5 w-5 mr-2 fill-current" /> WHATSAPP
+                                        <MessageCircle className="h-5 w-5 mr-2 fill-current" />
+                                        {p.status === 'concluido' ? 'NOTIFICAR QUE ESTÁ PRONTO' : 'ENVIAR STATUS WHATSAPP'}
                                     </Button>
 
                                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-
-                                        {/* COLUNA ESQUERDA: ESPECIFICAÇÕES */}
                                         <div className="space-y-4">
-
-                                            {/* DADOS DO PRODUTO */}
                                             <div className="border border-slate-100 bg-slate-50/50 p-5 rounded-xl">
                                                 <h4 className="text-xs font-bold text-slate-500 uppercase flex items-center gap-2 mb-4">
                                                     <Package className="h-4 w-4" /> Dados do Produto
@@ -235,7 +249,6 @@ export default function Pedidos() {
                                                 </div>
                                             </div>
 
-                                            {/* PARTE DE CIMA (TOP) */}
                                             <div className="border border-blue-100 bg-[#F8FAFC] p-5 rounded-xl">
                                                 <h4 className="text-[11px] font-black text-blue-600 uppercase mb-3">Parte de Cima (Top)</h4>
                                                 <div className="space-y-2 text-sm text-slate-800">
@@ -249,7 +262,6 @@ export default function Pedidos() {
                                                 </div>
                                             </div>
 
-                                            {/* PARTE DE BAIXO (CALCINHA) */}
                                             <div className="border border-purple-100 bg-[#FAF5FF] p-5 rounded-xl">
                                                 <h4 className="text-[11px] font-black text-purple-600 uppercase mb-3">Parte de Baixo (Calcinha)</h4>
                                                 <div className="space-y-2 text-sm text-slate-800">
@@ -258,7 +270,6 @@ export default function Pedidos() {
                                                 </div>
                                             </div>
 
-                                            {/* CORES E DETALHES */}
                                             <div className="border border-pink-100 bg-[#FFF1F2] p-5 rounded-xl">
                                                 <h4 className="text-[11px] font-black text-pink-600 uppercase mb-3">Cores e Detalhes</h4>
                                                 <div className="space-y-2 text-sm text-slate-800">
@@ -270,12 +281,9 @@ export default function Pedidos() {
                                             </div>
                                         </div>
 
-                                        {/* COLUNA DIREITA: IMAGEM E FINANÇAS */}
-                                        <div className="space-y-4">
-
-                                            {/* FOTO QUADRADA E MENOR (CENTRALIZADA) */}
+                                        <div className="space-y-4 text-center lg:text-right">
                                             <div className="flex justify-center lg:justify-end">
-                                                <div className="bg-slate-50 rounded-2xl w-[220px] h-[220px] border border-slate-200 flex items-center justify-center overflow-hidden shadow-sm shrink-0">
+                                                <div className="bg-slate-50 rounded-2xl w-[220px] h-[220px] border border-slate-200 flex items-center justify-center overflow-hidden shadow-sm">
                                                     {p.foto_url ? (
                                                         <img src={p.foto_url} alt="Referência" className="w-full h-full object-cover" />
                                                     ) : (
@@ -287,78 +295,63 @@ export default function Pedidos() {
                                                 </div>
                                             </div>
 
-                                            {/* ENTREGA E FINANCEIRO */}
-                                            <div className="border border-orange-200 bg-[#FFF7ED] p-5 rounded-xl mt-4">
-                                                <h4 className="text-[11px] font-black text-orange-600 uppercase mb-4">Entrega e Financeiro</h4>
+                                            <div className="border border-orange-200 bg-[#FFF7ED] p-5 rounded-xl mt-4 text-left">
+                                                <h4 className="text-[11px] font-black text-orange-600 uppercase mb-4 text-center lg:text-left">Entrega e Financeiro</h4>
                                                 <div className="flex justify-between items-end">
                                                     <div>
                                                         <p className="text-[10px] font-black text-orange-600/70 uppercase mb-1">Prazo</p>
-                                                        <p className="text-xl font-bold text-slate-900">
-                                                            {format(new Date(p.data_entrega), "dd/MM/yyyy")}
+                                                        <p className={`text-xl font-bold ${getEstiloPrazo(p.data_entrega, p.status)}`}>
+                                                            {format(parseISO(p.data_entrega), "dd/MM/yyyy")}
                                                         </p>
                                                     </div>
                                                     <div className="text-right">
                                                         <p className="text-[10px] font-black text-orange-600/70 uppercase mb-1">Valor Total</p>
-                                                        <p className="text-3xl font-black text-orange-600 font-mono">
+                                                        <p className="text-3xl font-black text-orange-600">
                                                             <span className="text-xl mr-1">R$</span>{Number(p.valor).toFixed(2)}
                                                         </p>
                                                     </div>
                                                 </div>
                                             </div>
 
-                                            {/* NOTAS IMPORTANTES */}
                                             {p.observacoes && (
-                                                <div className="bg-[#FEFCE8] border-l-4 border-yellow-400 p-5 rounded-r-xl mt-4">
+                                                <div className="bg-[#FEFCE8] border-l-4 border-yellow-400 p-5 rounded-r-xl mt-4 text-left">
                                                     <h4 className="text-[11px] font-black text-yellow-800 uppercase flex items-center gap-2 mb-2">
-                                                        <AlertTriangle className="h-4 w-4" /> Notas Importantes
+                                                        <AlertTriangle className="h-4 w-4" /> Notas
                                                     </h4>
-                                                    <p className="text-sm italic text-yellow-900 font-medium">
-                                                        "{p.observacoes}"
-                                                    </p>
+                                                    <p className="text-sm italic text-yellow-900">"{p.observacoes}"</p>
                                                 </div>
                                             )}
                                         </div>
-
                                     </div>
                                 </div>
 
-                                {/* RODAPÉ COM AÇÕES */}
                                 <div className="p-5 border-t border-slate-200 bg-white flex flex-col sm:flex-row justify-between items-center gap-4 mt-auto">
                                     <Button
                                         variant="ghost"
-                                        className="text-slate-500 font-bold uppercase tracking-wider text-xs hover:bg-slate-50"
+                                        className="text-slate-500 font-bold uppercase tracking-wider text-xs"
                                         onClick={() => navigate(`/pedidos/editar/${p.id}`)}
                                     >
-                                        <Edit className="h-4 w-4 mr-2" /> Editar Cadastro
+                                        <Edit className="h-4 w-4 mr-2" /> Editar
                                     </Button>
 
                                     <div className="flex gap-3 w-full sm:w-auto">
-                                        {(p.status === 'concluido' || p.status === 'entregue' || p.status === 'em_producao') && (
-                                            <Button
-                                                variant="outline"
-                                                className="border-amber-200 text-amber-600 font-bold uppercase text-xs rounded-xl"
-                                                onClick={() => updateStatus(p.id, 'pendente')}
-                                            >
-                                                <RotateCcw className="h-4 w-4 mr-2" /> Reabrir
+                                        {p.status !== 'pendente' && (
+                                            <Button variant="outline" className="border-amber-200 text-amber-600 font-bold uppercase text-xs" onClick={() => updateStatus(p.id, 'pendente')}>
+                                                <RotateCcw className="h-4 w-4 mr-1" /> Reabrir
                                             </Button>
                                         )}
                                         {p.status === 'pendente' && (
-                                            <Button
-                                                className="bg-blue-600 hover:bg-blue-700 text-white font-bold uppercase text-xs px-8 h-12 rounded-xl"
-                                                onClick={() => updateStatus(p.id, 'em_producao')}
-                                            >
+                                            <Button className="bg-blue-600 hover:bg-blue-700 text-white font-bold uppercase text-xs h-12 px-8 rounded-xl" onClick={() => updateStatus(p.id, 'em_producao')}>
                                                 Iniciar
                                             </Button>
                                         )}
-                                        <Button
-                                            className="bg-[#16A34A] hover:bg-[#15803D] text-white font-bold uppercase text-xs px-8 h-12 rounded-xl"
-                                            onClick={() => updateStatus(p.id, 'concluido')}
-                                        >
-                                            Concluído
-                                        </Button>
+                                        {p.status !== 'concluido' && (
+                                            <Button className="bg-[#16A34A] hover:bg-[#15803D] text-white font-bold uppercase text-xs h-12 px-8 rounded-xl" onClick={() => updateStatus(p.id, 'concluido')}>
+                                                <CheckCircle2 className="h-4 w-4 mr-1" /> Concluir
+                                            </Button>
+                                        )}
                                     </div>
                                 </div>
-
                             </div>
                         );
                     })()}

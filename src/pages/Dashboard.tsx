@@ -4,8 +4,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
     Package,
     Users,
@@ -18,12 +16,13 @@ import {
     DollarSign,
     ArrowDownCircle,
     PieChart,
-    Trash2,
+    Palette,
+    Calendar,
+    Store
 } from "lucide-react";
 import { toast } from "sonner";
 import { PostgrestError } from "@supabase/supabase-js";
 
-// IMPORTAÇÃO DA LOGOMARCA
 import logoImg from "@/assets/logo-fabbis.jpeg";
 
 interface DashboardStats {
@@ -49,10 +48,7 @@ export default function Dashboard() {
         faturamentoMes: 0,
         despesasTotais: 0,
     });
-    const [listaDespesas, setListaDespesas] = useState<any[]>([]);
-    const [novaDespesa, setNovaDespesa] = useState({ descricao: "", valor: "" });
     const [loading, setLoading] = useState(true);
-    const [savingDespesa, setSavingDespesa] = useState(false);
 
     useEffect(() => {
         checkAuth();
@@ -66,19 +62,19 @@ export default function Dashboard() {
 
     const loadStats = async () => {
         try {
-            const [pedidosRes, clientesRes, despesasRes] = await Promise.all([
+            // Alterado de 'despesas' para 'gastos' para puxar da nova tabela do Meu Caixa
+            const [pedidosRes, clientesRes, gastosRes] = await Promise.all([
                 supabase.from("pedidos").select("status, valor, data_entrega"),
                 supabase.from("clientes").select("id", { count: "exact", head: true }),
-                supabase.from("despesas").select("*").order("created_at", { ascending: false })
+                supabase.from("gastos").select("valor, data_gasto")
             ]);
 
             if (pedidosRes.error) throw pedidosRes.error;
             if (clientesRes.error) throw clientesRes.error;
-            if (despesasRes.error) throw despesasRes.error;
+            if (gastosRes.error) throw gastosRes.error;
 
             const pedidos = pedidosRes.data || [];
-            const despesas = despesasRes.data || [];
-            setListaDespesas(despesas);
+            const gastos = gastosRes.data || [];
 
             const hoje = new Date();
             const mesAtual = hoje.getMonth();
@@ -92,14 +88,26 @@ export default function Dashboard() {
                 entregue: pedidos.filter(p => p.status === "entregue").length,
                 totalClientes: clientesRes.count || 0,
                 faturamentoMes: 0,
-                despesasTotais: despesas.reduce((acc, curr) => acc + Number(curr.valor), 0),
+                despesasTotais: 0,
             };
 
+            // Calcula faturamento do mês atual
             pedidos.forEach(p => {
+                if (!p.data_entrega) return;
                 const dataEntrega = new Date(p.data_entrega);
                 dataEntrega.setMinutes(dataEntrega.getMinutes() + dataEntrega.getTimezoneOffset());
                 if (dataEntrega.getMonth() === mesAtual && dataEntrega.getFullYear() === anoAtual && p.status !== 'cancelado') {
                     newStats.faturamentoMes += Number(p.valor) || 0;
+                }
+            });
+
+            // Calcula gastos do mês atual
+            gastos.forEach(g => {
+                if (!g.data_gasto) return;
+                const dataGasto = new Date(g.data_gasto);
+                dataGasto.setMinutes(dataGasto.getMinutes() + dataGasto.getTimezoneOffset());
+                if (dataGasto.getMonth() === mesAtual && dataGasto.getFullYear() === anoAtual) {
+                    newStats.despesasTotais += Number(g.valor) || 0;
                 }
             });
 
@@ -112,36 +120,6 @@ export default function Dashboard() {
         }
     };
 
-    const handleAdicionarDespesa = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!novaDespesa.descricao || !novaDespesa.valor) return;
-        setSavingDespesa(true);
-
-        try {
-            const { data: { user } } = await supabase.auth.getUser();
-            const { error } = await supabase.from("despesas").insert({
-                user_id: user?.id,
-                descricao: novaDespesa.descricao,
-                valor: parseFloat(novaDespesa.valor)
-            });
-
-            if (error) throw error;
-            toast.success("Gasto registrado com sucesso!");
-            setNovaDespesa({ descricao: "", valor: "" });
-            loadStats();
-        } catch (error: any) {
-            toast.error(error.message);
-        } finally {
-            setSavingDespesa(false);
-        }
-    };
-
-    const handleExcluirDespesa = async (id: string) => {
-        if (!confirm("Excluir este registro de gasto?")) return;
-        await supabase.from("despesas").delete().eq("id", id);
-        loadStats();
-    };
-
     const handleLogout = async () => {
         await supabase.auth.signOut();
         navigate("/auth");
@@ -152,7 +130,7 @@ export default function Dashboard() {
     };
 
     if (loading) {
-        return <div className="min-h-screen flex items-center justify-center">Carregando...</div>;
+        return <div className="min-h-screen flex items-center justify-center">Carregando painel...</div>;
     }
 
     return (
@@ -160,7 +138,7 @@ export default function Dashboard() {
             <header className="border-b bg-card/80 backdrop-blur-sm sticky top-0 z-50">
                 <div className="container mx-auto px-4 py-2 flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                        <img src={logoImg} alt="Logomarca Fabbis" className="h-32 w-auto object-contain" />
+                        <img src={logoImg} alt="Logomarca Fabbis" className="h-16 w-auto object-contain" />
                         <p className="text-sm text-muted-foreground font-medium hidden md:block">Gestão Fabbis</p>
                     </div>
                     <Button variant="ghost" size="sm" onClick={handleLogout}>
@@ -175,7 +153,7 @@ export default function Dashboard() {
                     <p className="text-muted-foreground">Acompanhe seus pedidos e a saúde financeira do mês.</p>
                 </div>
 
-                {/* --- SEÇÃO 1: STATUS DOS PEDIDOS (CORRIGIDA PARA FILTRAR) --- */}
+                {/* --- SEÇÃO 1: STATUS DOS PEDIDOS --- */}
                 <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 mb-8">
                     <Card onClick={() => navigate('/pedidos')} className="p-6 bg-gradient-to-br from-card to-card/50 border-primary/20 hover:shadow-lg transition-shadow cursor-pointer">
                         <div className="flex items-center justify-between mb-4"><Package className="h-8 w-8 text-primary" /><Badge variant="secondary">{stats.total}</Badge></div>
@@ -203,65 +181,39 @@ export default function Dashboard() {
                     </Card>
                 </div>
 
-                {/* --- SEÇÃO 2: AÇÕES E GASTOS --- */}
-                <div className="grid gap-6 md:grid-cols-2 mb-8">
-                    <Card className="p-6">
-                        <h3 className="text-lg font-semibold mb-4">Ações Rápidas</h3>
-                        <div className="space-y-3">
-                            <Button className="w-full justify-start h-12" onClick={() => navigate("/pedidos/novo")}><Plus className="h-5 w-5 mr-2" />Novo Pedido</Button>
-                            <Button variant="outline" className="w-full justify-start h-12" onClick={() => navigate("/clientes")}><Users className="h-5 w-5 mr-2" />Gerenciar Clientes</Button>
-                        </div>
-
-                        <div className="mt-8 border-t pt-6">
-                            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2"><ArrowDownCircle className="h-5 w-5 text-red-500" /> Registrar Gasto</h3>
-                            <form onSubmit={handleAdicionarDespesa} className="space-y-4">
-                                <div>
-                                    <Label>O que comprou?</Label>
-                                    <Input placeholder="Ex: Rolo de Lycra, Etiquetas..." value={novaDespesa.descricao} onChange={e => setNovaDespesa({...novaDespesa, descricao: e.target.value})} />
-                                </div>
-                                <div>
-                                    <Label>Valor pago</Label>
-                                    <Input type="number" step="0.01" value={novaDespesa.valor} onChange={e => setNovaDespesa({...novaDespesa, valor: e.target.value})} />
-                                </div>
-                                <Button type="submit" variant="destructive" className="w-full" disabled={savingDespesa}>
-                                    {savingDespesa ? "Registrando..." : "Salvar Despesa"}
-                                </Button>
-                            </form>
-                        </div>
-                    </Card>
-
-                    <Card className="p-6">
-                        <h3 className="text-lg font-semibold mb-4 flex items-center justify-between">
-                            Histórico de Gastos
-                            <span className="text-[10px] font-normal text-muted-foreground uppercase tracking-widest">Total: {formatarDinheiro(stats.despesasTotais)}</span>
-                        </h3>
-                        <div className="space-y-3 max-h-[420px] overflow-y-auto pr-2">
-                            {listaDespesas.length === 0 && <p className="text-sm text-muted-foreground text-center py-10">Nenhum gasto registrado este mês.</p>}
-                            {listaDespesas.map((d) => (
-                                <div key={d.id} className="flex justify-between items-center p-3 border rounded-lg bg-muted/30 group">
-                                    <div>
-                                        <p className="font-medium text-sm capitalize">{d.descricao}</p>
-                                        <p className="text-[10px] text-muted-foreground">{new Date(d.created_at).toLocaleDateString()}</p>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <span className="font-bold text-red-600 text-sm">-{formatarDinheiro(d.valor)}</span>
-                                        <Button variant="ghost" size="sm" onClick={() => handleExcluirDespesa(d.id)} className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <Trash2 className="h-4 w-4 text-muted-foreground" />
-                                        </Button>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </Card>
-                </div>
+                {/* --- SEÇÃO 2: AÇÕES RÁPIDAS --- */}
+                <Card className="p-6 mb-8">
+                    <h3 className="text-lg font-semibold mb-6">Ações Rápidas</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <Button className="w-full justify-start h-12" onClick={() => navigate("/pedidos/novo")}>
+                            <Plus className="h-5 w-5 mr-2" /> Novo Pedido
+                        </Button>
+                        <Button variant="outline" className="w-full justify-start h-12" onClick={() => navigate("/clientes")}>
+                            <Users className="h-5 w-5 mr-2" /> Gerenciar Clientes
+                        </Button>
+                        <Button variant="outline" className="w-full justify-start h-12" onClick={() => navigate("/materiais")}>
+                            <Palette className="h-5 w-5 mr-2" /> Meus Materiais
+                        </Button>
+                        <Button variant="outline" className="w-full justify-start h-12 border-primary/50 hover:bg-primary/5" onClick={() => navigate('/agenda')}>
+                            <Calendar className="h-5 w-5 mr-2 text-primary" /> Agenda de Entregas
+                        </Button>
+                        <Button variant="outline" className="w-full justify-start h-12 border-green-500/50 hover:bg-green-500/5" onClick={() => navigate('/financeiro')}>
+                            <DollarSign className="h-5 w-5 mr-2 text-green-500" /> Meu Caixa
+                        </Button>
+                        <Button variant="outline" className="w-full justify-start h-12" onClick={() => navigate('/catalogo')}>
+                            <Store className="h-5 w-5 mr-2" /> Vitrine de Biquínis
+                        </Button>
+                    </div>
+                </Card>
 
                 {/* --- SEÇÃO 3: FINANCEIRO (CARDS GRANDES NO FINAL) --- */}
+                <h3 className="text-lg font-semibold mb-4">Resumo Financeiro do Mês</h3>
                 <div className="grid gap-6 md:grid-cols-3">
                     <Card className="p-6 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950 dark:to-green-900 border-green-500/30">
                         <div className="flex items-center gap-4">
                             <div className="p-3 bg-green-500 rounded-full text-white"><DollarSign className="h-6 w-6" /></div>
                             <div>
-                                <h3 className="text-xs font-bold text-green-800 dark:text-green-200 uppercase">Faturamento (Vendas)</h3>
+                                <h3 className="text-xs font-bold text-green-800 dark:text-green-200 uppercase">Faturamento Estimado</h3>
                                 <p className="text-3xl font-bold text-green-700 dark:text-green-400">{formatarDinheiro(stats.faturamentoMes)}</p>
                             </div>
                         </div>
@@ -271,7 +223,7 @@ export default function Dashboard() {
                         <div className="flex items-center gap-4">
                             <div className="p-3 bg-red-500 rounded-full text-white"><ArrowDownCircle className="h-6 w-6" /></div>
                             <div>
-                                <h3 className="text-xs font-bold text-red-800 dark:text-red-200 uppercase">Saídas (Despesas)</h3>
+                                <h3 className="text-xs font-bold text-red-800 dark:text-red-200 uppercase">Despesas Registradas</h3>
                                 <p className="text-3xl font-bold text-red-700 dark:text-red-400">{formatarDinheiro(stats.despesasTotais)}</p>
                             </div>
                         </div>
