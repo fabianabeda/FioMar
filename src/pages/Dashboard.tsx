@@ -50,10 +50,16 @@ export default function Dashboard() {
     });
     const [loading, setLoading] = useState(true);
 
+
     useEffect(() => {
-        checkAuth();
-        loadStats();
-    }, []);
+        const checkUser = async () => {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) {
+                navigate("/auth");
+            }
+        };
+        checkUser();
+    }, [navigate]);
 
     const checkAuth = async () => {
         const { data: { session } } = await supabase.auth.getSession();
@@ -121,8 +127,24 @@ export default function Dashboard() {
     };
 
     const handleLogout = async () => {
-        await supabase.auth.signOut();
-        navigate("/auth");
+        try {
+            // 1. Avisa o Supabase para encerrar a sessão
+            const { error } = await supabase.auth.signOut();
+            if (error) throw error;
+
+            // 2. Limpa qualquer rastro no navegador (LocalStorage)
+            localStorage.clear();
+            sessionStorage.clear();
+
+            // 3. Força o redirecionamento para o login
+            // Usamos o window.location para garantir que a página dê um "refresh" total
+            window.location.href = "/auth";
+
+            toast.success("Até logo, Fabi!");
+        } catch (error) {
+            toast.error("Erro ao sair. Tente fechar o navegador.");
+            console.error("Erro logout:", error);
+        }
     };
 
     const formatarDinheiro = (valor: number) => {
