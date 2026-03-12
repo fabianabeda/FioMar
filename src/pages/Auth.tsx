@@ -17,9 +17,20 @@ export default function Auth() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // Dentro do seu componente de Auth ou Login
   useEffect(() => {
-    checkAuth();
-  }, []);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT') {
+        // Se eu saí, apenas limpa o estado, não precisa dar erro!
+        console.log("Usuário deslogado com sucesso");
+      }
+      if (session) {
+        navigate("/");
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [navigate]);
 
   const checkAuth = async () => {
     const { data: { session } } = await supabase.auth.getSession();
