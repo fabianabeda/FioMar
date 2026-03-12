@@ -147,8 +147,8 @@ export default function Catalogo() {
             <main className="container mx-auto px-4 py-8 max-w-5xl">
                 <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-8">
                     <div className="text-center md:text-left">
-                        <h1 className="text-4xl font-black text-slate-900 tracking-tighter">Vitrine Fabi Biquínis</h1>
-                        <p className="text-slate-500 font-medium">Modelos Exclusivos</p>
+                        <h1 className="text-4xl font-black text-slate-900 tracking-tighter">Vitrine Fabbis</h1>
+                        <p className="text-slate-500 font-medium">Catálogo de Biquínis</p>
                     </div>
 
                     {isAdmin && (
