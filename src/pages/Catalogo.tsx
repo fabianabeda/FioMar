@@ -201,7 +201,6 @@ export default function Catalogo() {
                     <div className="text-center md:text-left">
                         <h1 className="leading-tight flex flex-col md:flex-row md:items-baseline">
                             <span className="text-7xl md:text-8xl text-cyan-500" style={{ fontFamily: "'Allura', cursive", textTransform: 'none' }}>Fabbis</span>
-                            <span className="text-2xl md:text-4xl font-black text-slate-400 uppercase tracking-[0.2em] ml-0 md:ml-4" style={{ fontFamily: "'Montserrat', sans-serif" }}>Beachwear</span>
                         </h1>
                         <div className="flex items-center gap-4 mt-4">
                             <div className="h-[2px] w-12 bg-cyan-200 hidden md:block"></div>
