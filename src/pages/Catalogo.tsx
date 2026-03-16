@@ -251,14 +251,22 @@ export default function Catalogo() {
                                 <div className="p-7">
                                     <h3 className="font-black text-2xl text-slate-900 mb-1" style={{ fontFamily: "'Montserrat', sans-serif" }}>{peca.nome}</h3>
                                     <p className="text-slate-500 text-sm mb-5 line-clamp-2 leading-relaxed">{peca.descricao || "Peça exclusiva Fabbis Ateliê."}</p>
+
                                     <div className="flex items-center justify-between mt-auto">
                                         <div className="flex flex-col">
-                                            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Preço</span>
-                                            <p className="text-2xl font-black text-cyan-600">R$ {peca.preco.toFixed(2)}</p>
+                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Preço</span>
+                                            {/* Diminuído de text-2xl para text-lg */}
+                                            <p className="text-lg font-black text-cyan-600">R$ {peca.preco.toFixed(2)}</p>
                                         </div>
+
                                         {modoCliente && (
-                                            <Button className="bg-green-500 hover:bg-green-600 rounded-2xl px-6 h-12 font-bold shadow-lg" onClick={() => window.open(`https://wa.me/${SEU_TELEFONE}?text=${encodeURIComponent(`Olá Fabi! Gostei do modelo "${peca.nome}".`)}`, "_blank")}>
-                                                <MessageCircle className="mr-2 h-5 w-5" /> Encomendar
+                                            <Button
+                                                /* h-9 deixa o botão mais baixinho, text-xs a letra menor e px-4 menos largo */
+                                                className="bg-green-500 hover:bg-green-600 rounded-xl px-4 h-9 text-xs font-bold shadow-md transition-all"
+                                                onClick={() => window.open(`https://wa.me/${SEU_TELEFONE}?text=${encodeURIComponent(`Olá Fabi! Gostei do modelo "${peca.nome}".`)}`, "_blank")}
+                                            >
+                                                {/* Ícone menor (h-4 w-4) para acompanhar o botão */}
+                                                <MessageCircle className="mr-1.5 h-4 w-4" /> Encomendar
                                             </Button>
                                         )}
                                     </div>
