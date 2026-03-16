@@ -213,11 +213,11 @@ export default function Dashboard() {
                         <Button variant="outline" className="w-full justify-start h-12" onClick={() => navigate("/materiais")}>
                             <Palette className="h-5 w-5 mr-2" /> Meus Materiais
                         </Button>
-                        <Button variant="outline" className="w-full justify-start h-12 border-primary/50 hover:bg-primary/5" onClick={() => navigate('/agenda')}>
-                            <Calendar className="h-5 w-5 mr-2 text-primary" /> Agenda de Entregas
+                        <Button variant="outline" className="w-full justify-start h-12" onClick={() => navigate('/agenda')}>
+                            <Calendar className="h-5 w-5 mr-2" /> Agenda de Entregas
                         </Button>
-                        <Button variant="outline" className="w-full justify-start h-12 border-green-500/50 hover:bg-green-500/5" onClick={() => navigate('/financeiro')}>
-                            <DollarSign className="h-5 w-5 mr-2 text-green-500" /> Meu Caixa
+                        <Button variant="outline" className="w-full justify-start h-12" onClick={() => navigate('/financeiro')}>
+                            <DollarSign className="h-5 w-5 mr-2" /> Meu Caixa
                         </Button>
                         <Button variant="outline" className="w-full justify-start h-12" onClick={() => navigate('/catalogo')}>
                             <Store className="h-5 w-5 mr-2" /> Vitrine de Biquínis
