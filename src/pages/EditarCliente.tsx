@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
-import { ArrowLeft, Save, Loader2 } from "lucide-react";
+import { ArrowLeft, Save, Loader2, UserCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { PostgrestError } from "@supabase/supabase-js";
 
@@ -69,18 +69,16 @@ export default function EditarCliente() {
             }
         } catch (error) {
             const pgError = error as PostgrestError;
-            toast.error(pgError.message || "Erro ao carregar dados do cliente.");
+            toast.error(pgError.message || "Erro ao carregar dados.");
             navigate("/clientes");
         } finally {
             setInitialLoading(false);
         }
     };
 
-    // --- FUNÇÃO QUE FORMATA O TELEFONE AUTOMATICAMENTE MANTIDA ---
     const formatarTelefone = (valor: string) => {
         if (!valor) return "";
         const apenasNumeros = valor.replace(/\D/g, "").substring(0, 11);
-
         let formatado = apenasNumeros;
         if (apenasNumeros.length > 2) {
             formatado = `(${apenasNumeros.substring(0, 2)}) ${apenasNumeros.substring(2)}`;
@@ -95,16 +93,12 @@ export default function EditarCliente() {
         const telefoneFormatado = formatarTelefone(e.target.value);
         setFormData({ ...formData, telefone: telefoneFormatado });
     };
-    // ----------------------------------------------------------
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
 
         try {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) throw new Error("Sessão expirada. Por favor, faça login novamente.");
-
             const { error } = await supabase
                 .from("clientes")
                 .update({
@@ -117,12 +111,10 @@ export default function EditarCliente() {
 
             if (error) throw error;
 
-            toast.success("Cadastro atualizado com sucesso!");
+            toast.success("Ficha atualizada com sucesso! ✨");
             navigate("/clientes");
         } catch (error) {
-            const pgError = error as PostgrestError;
-            console.error("Erro ao atualizar cliente:", pgError);
-            toast.error(pgError.message || "Erro ao atualizar cliente");
+            toast.error("Erro ao atualizar dados.");
         } finally {
             setLoading(false);
         }
@@ -130,107 +122,127 @@ export default function EditarCliente() {
 
     if (initialLoading) {
         return (
-            <div className="min-h-screen flex items-center justify-center font-bold text-cyan-600">
-                <Loader2 className="animate-spin h-6 w-6 mr-2" />
-                Carregando ficha...
+            <div className="min-h-screen flex items-center justify-center font-black text-cyan-600 uppercase tracking-widest">
+                <Loader2 className="animate-spin h-6 w-6 mr-3" />
+                Abrindo Ficha...
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-slate-50 pb-12">
-            {/* CABEÇALHO CLEAN */}
+        <div className="min-h-screen bg-[#FAFBFC] pb-12 font-sans">
+            <style>
+                {`@import url('https://fonts.googleapis.com/css2?family=Allura&family=Montserrat:wght@400;700;900&display=swap');`}
+            </style>
+
             <header className="bg-white border-b sticky top-0 z-40 shadow-sm">
-                <div className="container mx-auto px-4 py-3 flex items-center gap-3">
-                    <Button variant="ghost" size="icon" onClick={() => navigate("/clientes")} className="text-slate-500 rounded-full hover:bg-slate-100">
-                        <ArrowLeft className="h-5 w-5" />
+                <div className="container mx-auto px-4 py-3 flex items-center justify-between">
+                    <img src={logoImg} alt="Fabbis" className="h-12 w-auto rounded-lg shadow-sm" />
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => navigate("/clientes")}
+                        className="font-bold text-slate-400 hover:text-cyan-600"
+                    >
+                        <ArrowLeft className="h-4 w-4 mr-2" /> Voltar
                     </Button>
-                    <h1 className="text-lg font-black text-slate-900 uppercase tracking-tight">Editar Cliente</h1>
                 </div>
             </header>
 
-            <main className="container mx-auto px-4 py-8 max-w-2xl">
-                <div className="mb-8 text-center md:text-left">
-                    <h1 className="text-3xl font-black text-slate-900">Atualizar Cadastro</h1>
-                    <p className="text-slate-500 text-sm mt-1">Altere as informações de {formData.nome_completo}</p>
+            <main className="container mx-auto px-4 py-12 max-w-2xl">
+                {/* TÍTULO ESTILIZADO */}
+                <div className="text-center mb-10">
+                    <h1 className="leading-tight inline-flex flex-col items-center">
+                        <span className="text-7xl text-cyan-500" style={{ fontFamily: "'Allura', cursive" }}>Editar</span>
+                        <span className="text-3xl font-black text-slate-400 uppercase tracking-[0.2em] -mt-4" style={{ fontFamily: "'Montserrat', sans-serif" }}>Cadastro</span>
+                    </h1>
+                    <div className="flex items-center justify-center gap-3 mt-4">
+                        <UserCircle2 className="h-5 w-5 text-cyan-200" />
+                        <p className="text-slate-400 font-bold text-[10px] uppercase tracking-[0.3em]">
+                            Atualizando informações de {formData.nome_completo.split(' ')[0]}
+                        </p>
+                    </div>
                 </div>
 
-                <Card className="p-8 rounded-[2rem] border-none shadow-sm bg-white">
-                    <form onSubmit={handleSubmit} className="space-y-6">
+                <Card className="p-10 rounded-[3rem] border-none shadow-xl shadow-slate-200/50 bg-white">
+                    <form onSubmit={handleSubmit} className="space-y-8">
 
-                        <div className="space-y-2">
-                            <Label htmlFor="nome_completo" className="font-bold text-slate-700 uppercase tracking-widest text-[10px]">
-                                Nome Completo *
+                        <div className="space-y-3">
+                            <Label htmlFor="nome_completo" className="font-black text-slate-400 uppercase tracking-widest text-[10px] ml-1">
+                                Nome da Cliente
                             </Label>
                             <Input
                                 id="nome_completo"
                                 value={formData.nome_completo}
                                 onChange={(e) => setFormData({ ...formData, nome_completo: e.target.value })}
                                 required
-                                className="h-12 rounded-xl bg-slate-50 border-slate-200 font-bold text-slate-900 focus-visible:ring-cyan-500"
+                                className="h-14 rounded-2xl bg-slate-50 border-none font-bold text-slate-800 text-lg px-6 focus-visible:ring-2 focus-visible:ring-cyan-500/20 shadow-inner"
                             />
                         </div>
 
-                        <div className="space-y-2">
-                            <Label htmlFor="telefone" className="font-bold text-slate-700 uppercase tracking-widest text-[10px]">
-                                Telefone / WhatsApp *
+                        <div className="space-y-3">
+                            <Label htmlFor="telefone" className="font-black text-slate-400 uppercase tracking-widest text-[10px] ml-1">
+                                WhatsApp / Telefone
                             </Label>
                             <Input
                                 id="telefone"
                                 type="tel"
-                                placeholder="(00) 00000-0000"
                                 value={formData.telefone}
                                 onChange={handleTelefoneChange}
                                 required
-                                className="h-12 rounded-xl bg-slate-50 border-slate-200 font-bold text-slate-900 focus-visible:ring-cyan-500"
+                                className="h-14 rounded-2xl bg-slate-50 border-none font-bold text-slate-800 text-lg px-6 focus-visible:ring-2 focus-visible:ring-cyan-500/20 shadow-inner"
                             />
                         </div>
 
-                        <div className="space-y-2">
-                            <Label htmlFor="email" className="font-bold text-slate-700 uppercase tracking-widest text-[10px]">
-                                E-mail <span className="text-slate-400 font-normal capitalize tracking-normal">(Opcional)</span>
+                        <div className="space-y-3">
+                            <Label htmlFor="email" className="font-black text-slate-400 uppercase tracking-widest text-[10px] ml-1">
+                                E-mail <span className="text-slate-300 font-medium lowercase">(opcional)</span>
                             </Label>
                             <Input
                                 id="email"
                                 type="email"
-                                placeholder="cliente@email.com"
                                 value={formData.email || ''}
                                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                className="h-12 rounded-xl bg-slate-50 border-slate-200 focus-visible:ring-cyan-500"
+                                className="h-14 rounded-2xl bg-slate-50 border-none font-bold text-slate-800 px-6 focus-visible:ring-2 focus-visible:ring-cyan-500/20 shadow-inner"
                             />
                         </div>
 
-                        <div className="space-y-2">
-                            <Label htmlFor="endereco" className="font-bold text-slate-700 uppercase tracking-widest text-[10px]">
-                                Endereço para Entrega <span className="text-slate-400 font-normal capitalize tracking-normal">(Opcional)</span>
+                        <div className="space-y-3">
+                            <Label htmlFor="endereco" className="font-black text-slate-400 uppercase tracking-widest text-[10px] ml-1">
+                                Endereço de Entrega <span className="text-slate-300 font-medium lowercase">(opcional)</span>
                             </Label>
                             <Textarea
                                 id="endereco"
-                                placeholder="Rua, Número, Bairro, CEP..."
                                 value={formData.endereco || ''}
                                 onChange={(e) => setFormData({ ...formData, endereco: e.target.value })}
                                 rows={4}
-                                className="rounded-xl bg-slate-50 border-slate-200 resize-none focus-visible:ring-cyan-500"
+                                className="rounded-[2rem] bg-slate-50 border-none font-bold text-slate-700 px-6 py-4 focus-visible:ring-2 focus-visible:ring-cyan-500/20 shadow-inner resize-none"
                             />
                         </div>
 
-                        <div className="flex flex-col sm:flex-row gap-4 pt-6 mt-4 border-t border-slate-100">
+                        <div className="flex flex-col gap-4 pt-4">
                             <Button
                                 type="submit"
                                 disabled={loading}
-                                className="flex-1 h-14 bg-cyan-600 hover:bg-cyan-700 text-white font-black rounded-xl text-lg shadow-lg shadow-cyan-100 uppercase tracking-wide"
+                                className="w-full h-16 bg-cyan-600 hover:bg-cyan-700 text-white font-black rounded-2xl text-lg shadow-xl shadow-cyan-100 uppercase tracking-widest transition-all active:scale-95"
                             >
-                                {loading ? <Loader2 className="animate-spin h-5 w-5 mr-2" /> : <Save className="h-5 w-5 mr-2" />}
-                                {loading ? "SALVANDO..." : "SALVAR ALTERAÇÕES"}
+                                {loading ? (
+                                    <Loader2 className="animate-spin h-6 w-6" />
+                                ) : (
+                                    <>
+                                        <Save className="h-5 w-5 mr-3" />
+                                        Confirmar Alterações
+                                    </>
+                                )}
                             </Button>
 
                             <Button
                                 type="button"
-                                variant="outline"
+                                variant="ghost"
                                 onClick={() => navigate("/clientes")}
-                                className="h-14 px-8 font-bold text-slate-500 rounded-xl border-slate-200 hover:bg-slate-50"
+                                className="h-12 font-bold text-slate-400 hover:text-red-400 hover:bg-red-50 rounded-2xl transition-colors"
                             >
-                                CANCELAR
+                                DESCARTAR MUDANÇAS
                             </Button>
                         </div>
                     </form>
