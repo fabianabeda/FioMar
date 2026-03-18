@@ -87,17 +87,35 @@ export default function Pedidos() {
     }, [pedidos, searchTerm, currentStatus]);
 
     const handleWhatsAppNotificacao = (p: Pedido) => {
-        const cleanPhone = p.clientes?.telefone?.replace(/\D/g, "");
-        const nomeCliente = p.clientes?.nome_completo.split(' ')[0];
-        let mensagem = "";
+            const cleanPhone = p.clientes?.telefone?.replace(/\D/g, "");
+            const nomeCliente = p.clientes?.nome_completo.split(' ')[0];
+            let mensagemTexto = "";
 
-        if (p.status === 'finalizados') {
-            mensagem = `Olá, ${nomeCliente}! %0A%0ASeu pedido de *${p.produto}* da *Fabbis* já está pronto! %0A%0AComo você prefere retirar?`;
-        } else {
-            mensagem = `Olá, ${nomeCliente}! %0A%0AEstou passando para confirmar seu pedido de *${p.produto}* na *Fabbis*. Ele está com entrega prevista para *${format(parseISO(p.data_entrega), "dd/MM/yyyy")}*!`;
-        }
-        window.open(`https://wa.me/55${cleanPhone}?text=${mensagem}`, "_blank");
-    };
+            if (p.status === 'finalizados') {
+                // MENSAGEM QUANDO O BIQUÍNI ESTÁ PRONTO
+                mensagemTexto = `Olá, ${nomeCliente}! ✨\n\nSeu pedido de *${p.produto}* da *Fabbis* já está prontinho! 👙\n\nComo você prefere retirar?`;
+            } else {
+                // MENSAGEM COMPLETA QUANDO ESTÁ PENDENTE OU EM PRODUÇÃO
+                mensagemTexto = `Olá, ${nomeCliente}! ✨\n\n` +
+                    `*RESUMO DO PEDIDO - FABBIS* 👙\n\n` +
+                    `*Peça:* ${p.produto} (Tam: ${p.tamanho})\n\n` +
+                    `*DESIGN & CORES:*\n` +
+                    `- Tecido Principal: ${p.cor_frente}\n` +
+                    `${p.cor_verso ? "- Tecido Verso: " + p.cor_verso + "\n" : ""}` +
+                    `- Cor dos Roletes: ${p.cor_roletes || p.cor_frente}\n` +
+                    `- Linha Crochê: ${p.cor_linha || "Padrão"}\n\n` +
+                    `*MODELAGEM:*\n` +
+                    `- Top: ${p.modelo_cima} ${p.tem_bojo ? "(C/ Bojo)" : "(S/ Bojo)"}\n` +
+                    `- Calcinha: ${p.modelo_baixo} (${p.tipo_lateral_baixo})\n\n` +
+                    `📅 *Entrega prevista:* ${format(parseISO(p.data_entrega), "dd/MM/yyyy")}\n` +
+                    `💰 *Valor Total:* R$ ${Number(p.valor).toFixed(2)}\n\n` +
+                    `Estou passando para te lembrar dos detalhes do seu pedido. Qualquer dúvida, estou à disposição! ✨💖`;
+            }
+
+            // Traduzindo a mensagem para o link do WhatsApp (garante que os Emojis e o '&' funcionem)
+            const mensagemCodificada = encodeURIComponent(mensagemTexto);
+            window.open(`https://wa.me/55${cleanPhone}?text=${mensagemCodificada}`, "_blank");
+        };
 
     const getEstiloPrazo = (dataStr: string, status: string) => {
         if (status === 'finalizados' || status === 'cancelado') return "text-slate-400";
