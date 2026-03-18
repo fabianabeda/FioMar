@@ -16,7 +16,8 @@ import {
     Search,
     Trash2,
     Camera,
-    Image as ImageIcon
+    Image as ImageIcon,
+    Edit // <-- NOVO: Ícone de Edição
 } from "lucide-react";
 import { toast } from "sonner";
 import logoImg from "@/assets/logo-fabbis.jpeg";
@@ -36,11 +37,15 @@ export default function Materiais() {
 
     const [modalAberto, setModalAberto] = useState(false);
     const [salvando, setSalvando] = useState(false);
+
+    // NOVO: Estado para saber se estamos editando um material existente
+    const [materialEditandoId, setMaterialEditandoId] = useState<string | null>(null);
+
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const [arquivoFoto, setArquivoFoto] = useState<File | null>(null);
+    const [fotoOriginalUrl, setFotoOriginalUrl] = useState<string | null>(null); // NOVO: Guarda a foto antiga na edição
     const inputFileRef = useRef<HTMLInputElement>(null);
 
-    // Agora focado apenas em tecidos e linhas
     const [novoMat, setNovoMat] = useState({ nome: "", tipo: "tecido" });
 
     useEffect(() => {
@@ -77,22 +82,44 @@ export default function Materiais() {
 
         setSalvando(true);
         try {
-            let publicUrl = "";
+            let publicUrl = fotoOriginalUrl || ""; // Mantém a foto antiga por padrão
+
+            // Se o usuário escolheu uma foto nova, faz o upload
             if (arquivoFoto) {
-                const nomeArq = `mat-${Math.random().toString(36).substring(2)}.jpg`;
+                const nomeArq = `mat-${Date.now()}-${Math.random().toString(36).substring(2)}.jpg`;
                 await supabase.storage.from("catalogo").upload(nomeArq, arquivoFoto);
                 const { data } = supabase.storage.from("catalogo").getPublicUrl(nomeArq);
                 publicUrl = data.publicUrl;
+
+                // Tenta remover a foto antiga para economizar espaço
+                if (fotoOriginalUrl) {
+                    const nomeAntigo = fotoOriginalUrl.split('/').pop();
+                    if (nomeAntigo) await supabase.storage.from("catalogo").remove([nomeAntigo]);
+                }
             }
 
-            const { error } = await supabase.from("materiais").insert([{
-                nome: novoMat.nome,
-                tipo: novoMat.tipo,
-                foto_url: publicUrl
-            }]);
+            if (materialEditandoId) {
+                // MODO DE EDIÇÃO
+                const { error } = await supabase.from("materiais").update({
+                    nome: novoMat.nome,
+                    tipo: novoMat.tipo,
+                    foto_url: publicUrl || null
+                }).eq("id", materialEditandoId);
 
-            if (error) throw error;
-            toast.success("Material adicionado com sucesso! ✨");
+                if (error) throw error;
+                toast.success("Material atualizado com sucesso! ✨");
+            } else {
+                // MODO DE CRIAÇÃO
+                const { error } = await supabase.from("materiais").insert([{
+                    nome: novoMat.nome,
+                    tipo: novoMat.tipo,
+                    foto_url: publicUrl || null
+                }]);
+
+                if (error) throw error;
+                toast.success("Material adicionado com sucesso! ✨");
+            }
+
             fecharModal();
             loadMateriais();
         } catch (error) {
@@ -102,11 +129,36 @@ export default function Materiais() {
         }
     };
 
-    const fecharModal = () => {
-        setModalAberto(false);
+    // NOVO: Função para abrir o modal em modo de edição
+    const abrirModalEditar = (material: Material) => {
+        setMaterialEditandoId(material.id);
+        setNovoMat({ nome: material.nome, tipo: material.tipo });
+        setPreviewUrl(material.foto_url || null);
+        setFotoOriginalUrl(material.foto_url || null);
+        setArquivoFoto(null);
+        setModalAberto(true);
+    };
+
+    // NOVO: Função para abrir o modal limpo (Novo Cadastro)
+    const abrirModalNovo = () => {
+        setMaterialEditandoId(null);
         setNovoMat({ nome: "", tipo: "tecido" });
         setPreviewUrl(null);
+        setFotoOriginalUrl(null);
         setArquivoFoto(null);
+        setModalAberto(true);
+    };
+
+    const fecharModal = () => {
+        setModalAberto(false);
+        // Limpa tudo após o modal fechar para não dar conflito na próxima vez
+        setTimeout(() => {
+            setMaterialEditandoId(null);
+            setNovoMat({ nome: "", tipo: "tecido" });
+            setPreviewUrl(null);
+            setFotoOriginalUrl(null);
+            setArquivoFoto(null);
+        }, 300);
     };
 
     const handleExcluir = async (id: string, fotoUrl?: string) => {
@@ -124,12 +176,11 @@ export default function Materiais() {
         }
     };
 
-    // Agrupamento sem Roletes (Tecidos aparecem primeiro)
     const categoriasAgrupadas = useMemo(() => {
         const filtrados = materiais.filter(m =>
             (m.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
             m.tipo.toLowerCase().includes(searchTerm.toLowerCase())) &&
-            m.tipo !== "rolete" // Regra: Rolete não entra na lista
+            m.tipo !== "rolete"
         );
 
         return filtrados.reduce((acc: { [key: string]: Material[] }, material) => {
@@ -165,7 +216,6 @@ export default function Materiais() {
             </header>
 
             <main className="container mx-auto px-4 py-6 max-w-5xl">
-                {/* Cabeçalho Fabbis Style */}
                 <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-8">
                     <h1 className="leading-tight text-center md:text-left">
                         <span className="text-6xl text-[#06B6D4] font-allura">Meus</span>
@@ -173,13 +223,12 @@ export default function Materiais() {
                     </h1>
                     <Button
                         className="bg-[#06B6D4] hover:bg-[#0891B2] text-white rounded-xl font-black h-11 px-6 shadow-md transition-all hover:scale-105"
-                        onClick={() => setModalAberto(true)}
+                        onClick={abrirModalNovo} // <-- Usando a nova função limpa
                     >
                         <Plus className="h-5 w-5 mr-2" /> NOVO ITEM
                     </Button>
                 </div>
 
-                {/* Busca Compacta */}
                 <div className="relative mb-10 max-w-2xl mx-auto">
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
                     <Input
@@ -190,7 +239,6 @@ export default function Materiais() {
                     />
                 </div>
 
-                {/* Grid por Categoria */}
                 {Object.entries(categoriasAgrupadas).map(([categoria, itens]) => (
                     <div key={categoria} className="mb-10">
                         <div className="flex items-center gap-2 mb-4">
@@ -212,12 +260,24 @@ export default function Materiais() {
                                                 <ImageIcon className="h-6 w-6" />
                                             </div>
                                         )}
-                                        <button
-                                            onClick={() => handleExcluir(material.id, material.foto_url)}
-                                            className="absolute top-1.5 right-1.5 p-1.5 bg-white/80 text-red-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                                        >
-                                            <Trash2 className="h-3.5 w-3.5" />
-                                        </button>
+
+                                        {/* NOVO: Ações que aparecem no Hover (Editar e Excluir) */}
+                                        <div className="absolute top-1.5 right-1.5 flex flex-col gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <button
+                                                onClick={() => abrirModalEditar(material)}
+                                                className="p-1.5 bg-white/90 text-[#06B6D4] rounded-full shadow-sm hover:bg-white hover:scale-110 transition-all"
+                                                title="Editar"
+                                            >
+                                                <Edit className="h-3.5 w-3.5" />
+                                            </button>
+                                            <button
+                                                onClick={() => handleExcluir(material.id, material.foto_url)}
+                                                className="p-1.5 bg-white/90 text-red-500 rounded-full shadow-sm hover:bg-white hover:scale-110 transition-all"
+                                                title="Excluir"
+                                            >
+                                                <Trash2 className="h-3.5 w-3.5" />
+                                            </button>
+                                        </div>
                                     </div>
                                     <div className="p-2 text-center">
                                         <h3 className="font-bold text-slate-600 uppercase text-[9px] leading-tight truncate font-montserrat">
@@ -231,25 +291,30 @@ export default function Materiais() {
                 ))}
             </main>
 
-            {/* Modal de Cadastro Simplificado */}
             <Dialog open={modalAberto} onOpenChange={(open) => !open && fecharModal()}>
                 <DialogContent className="max-w-md rounded-[2.5rem] bg-white border-none p-8">
                     <DialogHeader>
-                        <DialogTitle className="text-3xl text-[#06B6D4] font-allura">Novo Material</DialogTitle>
+                        <DialogTitle className="text-3xl text-[#06B6D4] font-allura">
+                            {materialEditandoId ? "Editar Material" : "Novo Material"}
+                        </DialogTitle>
                     </DialogHeader>
 
                     <form onSubmit={handleSalvar} className="space-y-5 mt-4">
-                        {/* Area de Foto */}
                         <div
                             onClick={() => inputFileRef.current?.click()}
-                            className="relative h-44 w-full border-2 border-dashed border-cyan-100 bg-cyan-50/20 rounded-[2rem] flex flex-col items-center justify-center cursor-pointer overflow-hidden"
+                            className="relative h-44 w-full border-2 border-dashed border-cyan-100 bg-cyan-50/20 rounded-[2rem] flex flex-col items-center justify-center cursor-pointer overflow-hidden group"
                         >
                             {previewUrl ? (
-                                <img src={previewUrl} className="h-full w-full object-cover" />
+                                <>
+                                    <img src={previewUrl} className="h-full w-full object-cover" />
+                                    <div className="absolute inset-0 bg-slate-900/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <span className="text-white font-black text-[10px] uppercase bg-white/20 backdrop-blur-md px-3 py-1.5 rounded-full">Alterar Foto</span>
+                                    </div>
+                                </>
                             ) : (
                                 <div className="text-center flex flex-col items-center">
                                     <Camera className="h-7 w-7 text-[#06B6D4] mb-1" />
-                                    <p className="text-[9px] font-black text-[#06B6D4] uppercase tracking-widest">Tirar Foto</p>
+                                    <p className="text-[9px] font-black text-[#06B6D4] uppercase tracking-widest">Anexar Foto</p>
                                 </div>
                             )}
                             <input type="file" accept="image/*" ref={inputFileRef} className="hidden" onChange={handleSelecionarFoto} />
@@ -261,24 +326,24 @@ export default function Materiais() {
                                 placeholder="Ex: Lycra Brilhosa Turquesa"
                                 value={novoMat.nome}
                                 onChange={e => setNovoMat({...novoMat, nome: e.target.value})}
-                                className="h-12 rounded-xl bg-slate-50 border-none px-5 font-bold"
+                                className="h-12 rounded-xl bg-slate-50 border-none px-5 font-bold text-slate-700"
                             />
                         </div>
 
                         <div className="space-y-1">
-                            <label className="text-[10px] font-black uppercase text-slate-400 ml-2 tracking-widest font-montserrat">Tipo</label>
+                            <label className="text-[10px] font-black uppercase text-slate-400 ml-2 tracking-widest font-montserrat">Categoria</label>
                             <select
                                 value={novoMat.tipo}
                                 onChange={e => setNovoMat({...novoMat, tipo: e.target.value})}
-                                className="w-full h-12 rounded-xl bg-slate-50 border-none px-5 font-bold text-slate-700 cursor-pointer"
+                                className="w-full h-12 rounded-xl bg-slate-50 border-none px-5 font-bold text-slate-700 cursor-pointer outline-none focus:ring-2 focus:ring-cyan-100"
                             >
                                 <option value="tecido">Tecido (Lycra)</option>
                                 <option value="linha">Linha</option>
                             </select>
                         </div>
 
-                        <Button type="submit" className="w-full h-14 bg-[#06B6D4] hover:bg-[#0891B2] text-white rounded-xl font-black shadow-lg" disabled={salvando}>
-                            {salvando ? "CADASTRANDO..." : "ADICIONAR AO ESTOQUE"}
+                        <Button type="submit" className="w-full h-14 bg-[#06B6D4] hover:bg-[#0891B2] text-white rounded-xl font-black shadow-lg uppercase tracking-widest text-[11px]" disabled={salvando}>
+                            {salvando ? "SALVANDO..." : (materialEditandoId ? "SALVAR ALTERAÇÕES" : "ADICIONAR AO ESTOQUE")}
                         </Button>
                     </form>
                 </DialogContent>
