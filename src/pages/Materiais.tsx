@@ -148,101 +148,93 @@ export default function Materiais() {
     );
 
     return (
-        <div className="min-h-screen bg-[#FAFBFC] pb-12 font-sans">
-            <style>
-                {`@import url('https://fonts.googleapis.com/css2?family=Allura&family=Montserrat:wght@400;700;900&display=swap');
-                  .font-allura { font-family: 'Allura', cursive; }
-                  .font-montserrat { font-family: 'Montserrat', sans-serif; }
-                `}
-            </style>
+            <div className="min-h-screen bg-[#FAFBFC] pb-12 font-sans">
+                <style>
+                    {`@import url('https://fonts.googleapis.com/css2?family=Allura&family=Montserrat:wght@400;700;900&display=swap');
+                      .font-allura { font-family: 'Allura', cursive; }
+                      .font-montserrat { font-family: 'Montserrat', sans-serif; }
+                    `}
+                </style>
 
-            <header className="bg-white border-b sticky top-0 z-40 shadow-sm">
-                <div className="container mx-auto px-4 py-3 flex items-center justify-between">
-                    <img src={logoImg} alt="Fabbis" className="h-12 w-auto rounded-lg" />
-                    <Button variant="ghost" size="sm" className="font-bold text-slate-400 hover:text-cyan-600" onClick={() => navigate("/")}>
-                        <ArrowLeft className="h-4 w-4 mr-2" /> Painel
-                    </Button>
-                </div>
-            </header>
-
-            <main className="container mx-auto px-4 py-8 max-w-6xl">
-                {/* Cabeçalho */}
-                <div className="flex flex-col md:flex-row justify-between items-end gap-6 mb-10">
-                    <div className="text-center md:text-left w-full">
-                        <h1 className="leading-tight">
-                            <span className="text-7xl md:text-8xl text-[#06B6D4] font-allura">Meus</span>
-                            <span className="text-2xl md:text-4xl font-black text-slate-400 uppercase tracking-[0.2em] ml-4 font-montserrat">Materiais</span>
-                        </h1>
+                <header className="bg-white border-b sticky top-0 z-40 shadow-sm">
+                    <div className="container mx-auto px-4 py-2 flex items-center justify-between">
+                        <img src={logoImg} alt="Fabbis" className="h-10 w-auto rounded-lg" />
+                        <Button variant="ghost" size="sm" className="font-bold text-slate-400 hover:text-[#06B6D4]" onClick={() => navigate("/")}>
+                            <ArrowLeft className="h-4 w-4 mr-2" /> Painel
+                        </Button>
                     </div>
-                    <Button
-                        className="bg-[#06B6D4] hover:bg-[#0891B2] text-white rounded-2xl font-black h-14 px-8 shadow-lg transition-all hover:scale-105 w-full md:w-auto"
-                        onClick={() => setModalAberto(true)}
-                    >
-                        <Plus className="h-6 w-6 mr-2" /> NOVO ITEM
-                    </Button>
-                </div>
+                </header>
 
-                {/* Busca */}
-                <div className="relative mb-12">
-                    <Search className="absolute left-6 top-1/2 -translate-y-1/2 h-6 w-6 text-slate-300" />
-                    <Input
-                        placeholder="Pesquisar material..."
-                        className="pl-16 h-16 rounded-3xl border-none shadow-sm bg-white text-lg placeholder:text-slate-300 focus:ring-2 focus:ring-cyan-500/20"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                </div>
-
-                {/* LISTAGEM POR CATEGORIA */}
-                {Object.keys(categoriasAgrupadas).length === 0 ? (
-                    <div className="text-center py-20 text-slate-300 font-bold uppercase tracking-widest">
-                        Nenhum material encontrado.
-                    </div>
-                ) : (
-                    Object.entries(categoriasAgrupadas).map(([categoria, itens]) => (
-                        <div key={categoria} className="mb-12">
-                            {/* Título da Categoria */}
-                            <div className="flex items-center gap-3 mb-6">
-                                <div className="h-8 w-1.5 bg-[#06B6D4] rounded-full" />
-                                <h2 className="text-2xl font-allura text-[#06B6D4] capitalize">{categoria}s</h2>
-                                <span className="text-[10px] font-black text-slate-300 uppercase tracking-[0.3em] ml-2">
-                                    {itens.length} {itens.length === 1 ? 'item' : 'itens'}
-                                </span>
+            <main className="container mx-auto px-4 py-6 max-w-5xl">
+                            {/* Cabeçalho mais compacto */}
+                            <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-8">
+                                <h1 className="leading-tight text-center md:text-left">
+                                    <span className="text-6xl text-[#06B6D4] font-allura">Meus</span>
+                                    <span className="text-xl font-black text-slate-400 uppercase tracking-[0.2em] ml-3 font-montserrat">Materiais</span>
+                                </h1>
+                                <Button
+                                    className="bg-[#06B6D4] hover:bg-[#0891B2] text-white rounded-xl font-black h-11 px-6 shadow-md transition-all hover:scale-105"
+                                    onClick={() => setModalAberto(true)}
+                                >
+                                    <Plus className="h-5 w-5 mr-2" /> NOVO ITEM
+                                </Button>
                             </div>
 
-                            {/* Grid da Categoria */}
-                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6 md:gap-8">
-                                {itens.map(material => (
-                                    <Card key={material.id} className="overflow-hidden rounded-[2.5rem] border-none shadow-sm hover:shadow-xl transition-all group bg-white">
-                                        <div className="aspect-square bg-slate-50 relative overflow-hidden">
-                                            {material.foto_url ? (
-                                                <img src={material.foto_url} className="w-full h-full object-cover transition-transform group-hover:scale-110 duration-700" alt={material.nome} />
-                                            ) : (
-                                                <div className="w-full h-full flex flex-col items-center justify-center text-slate-200">
-                                                    <ImageIcon className="h-12 w-12" />
+                            {/* Busca mais fina */}
+                            <div className="relative mb-10 max-w-2xl mx-auto">
+                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
+                                <Input
+                                    placeholder="Pesquisar material..."
+                                    className="pl-12 h-12 rounded-2xl border-none shadow-sm bg-white text-sm placeholder:text-slate-300 focus:ring-2 focus:ring-cyan-500/10"
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                />
+                            </div>
+
+                            {/* LISTAGEM POR CATEGORIA COM GRID COMPACTO */}
+                            {Object.entries(categoriasAgrupadas).map(([categoria, itens]) => (
+                                <div key={categoria} className="mb-10">
+                                    <div className="flex items-center gap-2 mb-4">
+                                        <h2 className="text-3xl font-allura text-[#06B6D4] capitalize">{categoria}s</h2>
+                                        <div className="h-[1px] flex-1 bg-slate-100 ml-2" />
+                                        <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest">
+                                            {itens.length} unid.
+                                        </span>
+                                    </div>
+
+                                    {/* GRID AJUSTADO: 3 colunas no celular e até 6 no computador */}
+                                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 md:gap-4">
+                                        {itens.map(material => (
+                                            <Card key={material.id} className="overflow-hidden rounded-2xl border-none shadow-sm hover:shadow-md transition-all group bg-white">
+                                                {/* Aspect Square para fotos menores e uniformes */}
+                                                <div className="aspect-square bg-slate-50 relative overflow-hidden">
+                                                    {material.foto_url ? (
+                                                        <img src={material.foto_url} className="w-full h-full object-cover" alt={material.nome} />
+                                                    ) : (
+                                                        <div className="w-full h-full flex items-center justify-center text-slate-200">
+                                                            <ImageIcon className="h-6 w-6" />
+                                                        </div>
+                                                    )}
+
+                                                    {/* Botão de excluir menor */}
+                                                    <button
+                                                        onClick={() => handleExcluir(material.id, material.foto_url)}
+                                                        className="absolute top-1.5 right-1.5 p-1.5 bg-white/80 text-red-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                                    >
+                                                        <Trash2 className="h-3.5 w-3.5" />
+                                                    </button>
                                                 </div>
-                                            )}
-
-                                            <button
-                                                onClick={() => handleExcluir(material.id, material.foto_url)}
-                                                className="absolute top-4 right-4 p-2.5 bg-white/90 text-red-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
-                                            >
-                                                <Trash2 className="h-5 w-5" />
-                                            </button>
-                                        </div>
-                                        <div className="p-5 text-center">
-                                            <h3 className="font-bold text-slate-700 uppercase text-[11px] tracking-tight truncate font-montserrat">
-                                                {material.nome}
-                                            </h3>
-                                        </div>
-                                    </Card>
-                                ))}
-                            </div>
-                        </div>
-                    ))
-                )}
-            </main>
-
+                                                <div className="p-2 text-center">
+                                                    <h3 className="font-bold text-slate-600 uppercase text-[9px] leading-tight truncate font-montserrat">
+                                                        {material.nome}
+                                                    </h3>
+                                                </div>
+                                            </Card>
+                                        ))}
+                                    </div>
+                                </div>
+                            ))}
+                        </main>
             {/* Modal de Cadastro (Igual ao anterior, apenas com cores ajustadas) */}
             <Dialog open={modalAberto} onOpenChange={(open) => !open && fecharModal()}>
                 <DialogContent className="max-w-md rounded-[3rem] bg-white border-none p-8">
