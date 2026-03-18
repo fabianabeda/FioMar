@@ -17,7 +17,7 @@ import {
     Trash2,
     Camera,
     Image as ImageIcon,
-    Edit // <-- NOVO: Ícone de Edição
+    Edit
 } from "lucide-react";
 import { toast } from "sonner";
 import logoImg from "@/assets/logo-fabbis.jpeg";
@@ -38,12 +38,11 @@ export default function Materiais() {
     const [modalAberto, setModalAberto] = useState(false);
     const [salvando, setSalvando] = useState(false);
 
-    // NOVO: Estado para saber se estamos editando um material existente
     const [materialEditandoId, setMaterialEditandoId] = useState<string | null>(null);
 
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const [arquivoFoto, setArquivoFoto] = useState<File | null>(null);
-    const [fotoOriginalUrl, setFotoOriginalUrl] = useState<string | null>(null); // NOVO: Guarda a foto antiga na edição
+    const [fotoOriginalUrl, setFotoOriginalUrl] = useState<string | null>(null);
     const inputFileRef = useRef<HTMLInputElement>(null);
 
     const [novoMat, setNovoMat] = useState({ nome: "", tipo: "tecido" });
@@ -82,16 +81,14 @@ export default function Materiais() {
 
         setSalvando(true);
         try {
-            let publicUrl = fotoOriginalUrl || ""; // Mantém a foto antiga por padrão
+            let publicUrl = fotoOriginalUrl || "";
 
-            // Se o usuário escolheu uma foto nova, faz o upload
             if (arquivoFoto) {
                 const nomeArq = `mat-${Date.now()}-${Math.random().toString(36).substring(2)}.jpg`;
                 await supabase.storage.from("catalogo").upload(nomeArq, arquivoFoto);
                 const { data } = supabase.storage.from("catalogo").getPublicUrl(nomeArq);
                 publicUrl = data.publicUrl;
 
-                // Tenta remover a foto antiga para economizar espaço
                 if (fotoOriginalUrl) {
                     const nomeAntigo = fotoOriginalUrl.split('/').pop();
                     if (nomeAntigo) await supabase.storage.from("catalogo").remove([nomeAntigo]);
@@ -99,7 +96,6 @@ export default function Materiais() {
             }
 
             if (materialEditandoId) {
-                // MODO DE EDIÇÃO
                 const { error } = await supabase.from("materiais").update({
                     nome: novoMat.nome,
                     tipo: novoMat.tipo,
@@ -109,7 +105,6 @@ export default function Materiais() {
                 if (error) throw error;
                 toast.success("Material atualizado com sucesso! ✨");
             } else {
-                // MODO DE CRIAÇÃO
                 const { error } = await supabase.from("materiais").insert([{
                     nome: novoMat.nome,
                     tipo: novoMat.tipo,
@@ -129,7 +124,6 @@ export default function Materiais() {
         }
     };
 
-    // NOVO: Função para abrir o modal em modo de edição
     const abrirModalEditar = (material: Material) => {
         setMaterialEditandoId(material.id);
         setNovoMat({ nome: material.nome, tipo: material.tipo });
@@ -139,7 +133,6 @@ export default function Materiais() {
         setModalAberto(true);
     };
 
-    // NOVO: Função para abrir o modal limpo (Novo Cadastro)
     const abrirModalNovo = () => {
         setMaterialEditandoId(null);
         setNovoMat({ nome: "", tipo: "tecido" });
@@ -151,7 +144,6 @@ export default function Materiais() {
 
     const fecharModal = () => {
         setModalAberto(false);
-        // Limpa tudo após o modal fechar para não dar conflito na próxima vez
         setTimeout(() => {
             setMaterialEditandoId(null);
             setNovoMat({ nome: "", tipo: "tecido" });
@@ -208,7 +200,7 @@ export default function Materiais() {
 
             <header className="bg-white border-b sticky top-0 z-40 shadow-sm">
                 <div className="container mx-auto px-4 py-2 flex items-center justify-between">
-                    <img src={logoImg} alt="Fabbis" className="h-10 w-auto rounded-lg" />
+                    <img src={logoImg} alt="Fabbis" className="h-10 w-auto rounded-lg cursor-pointer" onClick={() => navigate("/")} />
                     <Button variant="ghost" size="sm" className="font-bold text-slate-400 hover:text-[#06B6D4]" onClick={() => navigate("/")}>
                         <ArrowLeft className="h-4 w-4 mr-2" /> Painel
                     </Button>
@@ -222,8 +214,8 @@ export default function Materiais() {
                         <span className="text-xl font-black text-slate-400 uppercase tracking-[0.2em] ml-3 font-montserrat">Materiais</span>
                     </h1>
                     <Button
-                        className="bg-[#06B6D4] hover:bg-[#0891B2] text-white rounded-xl font-black h-11 px-6 shadow-md transition-all hover:scale-105"
-                        onClick={abrirModalNovo} // <-- Usando a nova função limpa
+                        className="bg-[#06B6D4] hover:bg-[#0891B2] text-white rounded-xl font-black h-11 px-6 shadow-md transition-all active:scale-95 hover:scale-105"
+                        onClick={abrirModalNovo}
                     >
                         <Plus className="h-5 w-5 mr-2" /> NOVO ITEM
                     </Button>
@@ -244,7 +236,7 @@ export default function Materiais() {
                         <div className="flex items-center gap-2 mb-4">
                             <h2 className="text-3xl font-allura text-[#06B6D4] capitalize">{categoria}s</h2>
                             <div className="h-[1px] flex-1 bg-slate-100 ml-2" />
-                            <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest">
+                            <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest font-montserrat">
                                 {itens.length} unid.
                             </span>
                         </div>
@@ -261,21 +253,21 @@ export default function Materiais() {
                                             </div>
                                         )}
 
-                                        {/* NOVO: Ações que aparecem no Hover (Editar e Excluir) */}
-                                        <div className="absolute top-1.5 right-1.5 flex flex-col gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        {/* AÇÕES SEMPRE VISÍVEIS (Para funcionar no celular) */}
+                                        <div className="absolute top-1 right-1 flex flex-col gap-1">
                                             <button
-                                                onClick={() => abrirModalEditar(material)}
-                                                className="p-1.5 bg-white/90 text-[#06B6D4] rounded-full shadow-sm hover:bg-white hover:scale-110 transition-all"
+                                                onClick={(e) => { e.stopPropagation(); abrirModalEditar(material); }}
+                                                className="p-2 bg-white/90 text-[#06B6D4] rounded-full shadow-md active:scale-90 transition-all"
                                                 title="Editar"
                                             >
-                                                <Edit className="h-3.5 w-3.5" />
+                                                <Edit className="h-4 w-4" />
                                             </button>
                                             <button
-                                                onClick={() => handleExcluir(material.id, material.foto_url)}
-                                                className="p-1.5 bg-white/90 text-red-500 rounded-full shadow-sm hover:bg-white hover:scale-110 transition-all"
+                                                onClick={(e) => { e.stopPropagation(); handleExcluir(material.id, material.foto_url); }}
+                                                className="p-2 bg-white/90 text-rose-500 rounded-full shadow-md active:scale-90 transition-all"
                                                 title="Excluir"
                                             >
-                                                <Trash2 className="h-3.5 w-3.5" />
+                                                <Trash2 className="h-4 w-4" />
                                             </button>
                                         </div>
                                     </div>
@@ -307,8 +299,8 @@ export default function Materiais() {
                             {previewUrl ? (
                                 <>
                                     <img src={previewUrl} className="h-full w-full object-cover" />
-                                    <div className="absolute inset-0 bg-slate-900/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <span className="text-white font-black text-[10px] uppercase bg-white/20 backdrop-blur-md px-3 py-1.5 rounded-full">Alterar Foto</span>
+                                    <div className="absolute inset-0 flex items-center justify-center">
+                                        <span className="text-white font-black text-[10px] uppercase bg-slate-900/60 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-lg">Alterar Foto</span>
                                     </div>
                                 </>
                             ) : (
@@ -342,7 +334,7 @@ export default function Materiais() {
                             </select>
                         </div>
 
-                        <Button type="submit" className="w-full h-14 bg-[#06B6D4] hover:bg-[#0891B2] text-white rounded-xl font-black shadow-lg uppercase tracking-widest text-[11px]" disabled={salvando}>
+                        <Button type="submit" className="w-full h-14 bg-[#06B6D4] hover:bg-[#0891B2] text-white rounded-xl font-black shadow-lg uppercase tracking-widest text-[11px] active:scale-95 transition-all" disabled={salvando}>
                             {salvando ? "SALVANDO..." : (materialEditandoId ? "SALVAR ALTERAÇÕES" : "ADICIONAR AO ESTOQUE")}
                         </Button>
                     </form>

@@ -104,66 +104,70 @@ export default function NovoPedido() {
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!formData.cliente_id) return toast.error("Selecione uma cliente.");
+            e.preventDefault();
+            if (!formData.cliente_id) return toast.error("Selecione uma cliente.");
 
-        setSalvando(true);
-        let urlDaFotoSalva = null;
+            setSalvando(true);
+            let urlDaFotoSalva = null;
 
-        try {
-            if (arquivoFoto) {
-                let fotoParaEnviar = arquivoFoto;
-                try { fotoParaEnviar = await comprimirImagem(arquivoFoto); } catch (e) {}
-                const nomeArquivo = `ref-${Date.now()}.jpg`;
-                const { error: uploadError } = await supabase.storage.from("pedidos").upload(nomeArquivo, fotoParaEnviar);
-                if (!uploadError) {
-                    const { data } = supabase.storage.from("pedidos").getPublicUrl(nomeArquivo);
-                    urlDaFotoSalva = data.publicUrl;
+            try {
+                if (arquivoFoto) {
+                    let fotoParaEnviar = arquivoFoto;
+                    try { fotoParaEnviar = await comprimirImagem(arquivoFoto); } catch (e) {}
+                    const nomeArquivo = `ref-${Date.now()}.jpg`;
+                    const { error: uploadError } = await supabase.storage.from("pedidos").upload(nomeArquivo, fotoParaEnviar);
+                    if (!uploadError) {
+                        const { data } = supabase.storage.from("pedidos").getPublicUrl(nomeArquivo);
+                        urlDaFotoSalva = data.publicUrl;
+                    }
                 }
+
+                const { error } = await supabase.from("pedidos").insert([{
+                    ...formData,
+                    tem_bojo: formData.tem_bojo === "true",
+                    valor: parseFloat(formData.valor || "0"),
+                    foto_url: urlDaFotoSalva,
+                    status: "realizados"
+                }]);
+
+                if (error) throw error;
+
+                const clienteInfo = clientes.find(c => c.id === formData.cliente_id);
+                if (clienteInfo?.telefone) {
+                    const cleanPhone = clienteInfo.telefone.replace(/\D/g, "");
+                    const nomeCliente = clienteInfo.nome_completo.split(' ')[0];
+                    const dataFormatada = formData.data_entrega.split('-').reverse().join('/');
+
+                    // MUDANÇA AQUI: Usando \n para pular linha e sem o %0A manual
+                    const mensagemTexto = `Olá, ${nomeCliente}! ✨\n\n` +
+                        `*CONFIRMAÇÃO DE PEDIDO - FABBIS* 👙\n\n` +
+                        `*Peça:* ${formData.produto} (Tam: ${formData.tamanho})\n\n` +
+                        `*DESIGN & CORES:*\n` +
+                        `- Tecido Principal: ${formData.cor_frente}\n` +
+                        `${formData.cor_verso ? "- Tecido Verso: " + formData.cor_verso + "\n" : ""}` +
+                        `- Cor dos Roletes: ${formData.cor_roletes || formData.cor_frente}\n` +
+                        `- Linha Crochê: ${formData.cor_linha || "Padrão"}\n\n` +
+                        `*MODELAGEM:*\n` +
+                        `- Top: ${formData.modelo_cima} ${formData.tem_bojo === "true" ? "(C/ Bojo)" : "(S/ Bojo)"}\n` +
+                        `- Calcinha: ${formData.modelo_baixo} (${formData.tipo_lateral_baixo})\n\n` +
+                        `📅 *Entrega prevista:* ${dataFormatada}\n` +
+                        `💰 *Valor Total:* R$ ${parseFloat(formData.valor).toFixed(2)}\n\n` +
+                        `Tudo certinho? Se sim, já vou dar início à produção da sua peça exclusiva! ✨💖`;
+
+                    // AQUI ESTÁ A MÁGICA QUE TRADUZ OS EMOJIS E O '&'
+                    const mensagemCodificada = encodeURIComponent(mensagemTexto);
+
+                    window.open(`https://wa.me/55${cleanPhone}?text=${mensagemCodificada}`, "_blank");
+                }
+
+                toast.success("Pedido registrado e enviado para o Whats! 👙");
+                navigate("/pedidos");
+            } catch (error) {
+                toast.error("Erro ao salvar pedido.");
+            } finally {
+                setSalvando(false);
             }
-
-            const { error } = await supabase.from("pedidos").insert([{
-                ...formData,
-                tem_bojo: formData.tem_bojo === "true",
-                valor: parseFloat(formData.valor || "0"),
-                foto_url: urlDaFotoSalva,
-                status: "realizados" // <-- AQUI: Nasce com o status correto!
-            }]);
-
-            if (error) throw error;
-
-            const clienteInfo = clientes.find(c => c.id === formData.cliente_id);
-            if (clienteInfo?.telefone) {
-                const cleanPhone = clienteInfo.telefone.replace(/\D/g, "");
-                const nomeCliente = clienteInfo.nome_completo.split(' ')[0];
-                const dataFormatada = formData.data_entrega.split('-').reverse().join('/');
-
-                const mensagem = `Olá, ${nomeCliente}! ✨%0A%0A` +
-                    `*CONFIRMAÇÃO DE PEDIDO - FABBIS* 👙%0A%0A` +
-                    `*Peça:* ${formData.produto} (Tam: ${formData.tamanho})%0A%0A` +
-                    `*DESIGN & CORES:*%0A` +
-                    `- Tecido Principal: ${formData.cor_frente}%0A` +
-                    `${formData.cor_verso ? "- Tecido Verso: " + formData.cor_verso + "%0A" : ""}` +
-                    `- Cor dos Roletes: ${formData.cor_roletes || formData.cor_frente}%0A` +
-                    `- Linha Crochê: ${formData.cor_linha || "Padrão"}%0A%0A` +
-                    `*MODELAGEM:*%0A` +
-                    `- Top: ${formData.modelo_cima} ${formData.tem_bojo === "true" ? "(C/ Bojo)" : "(S/ Bojo)"}%0A` +
-                    `- Calcinha: ${formData.modelo_baixo} (${formData.tipo_lateral_baixo})%0A%0A` +
-                    `📅 *Entrega prevista:* ${dataFormatada}%0A` +
-                    `💰 *Valor Total:* R$ ${parseFloat(formData.valor).toFixed(2)}%0A%0A` +
-                    `Tudo certinho? Se sim, já vou dar início à produção da sua peça exclusiva! ✨💖`;
-
-                window.open(`https://wa.me/55${cleanPhone}?text=${mensagem}`, "_blank");
-            }
-
-            toast.success("Pedido registrado e enviado para o Whats! 👙");
-            navigate("/pedidos");
-        } catch (error) {
-            toast.error("Erro ao salvar pedido.");
-        } finally {
-            setSalvando(false);
-        }
-    };
+        };
 
     const RenderSeletorVisual = ({ tipo, label, campoDestino, icon: Icon, colorClass, showCopy }: any) => {
         const filtroTipo = tipo === "rolete" ? "tecido" : tipo;
