@@ -12,7 +12,6 @@ import {
     LogOut,
     ThumbsUp,
     CheckCheck,
-    Truck,
     DollarSign,
     ArrowDownCircle,
     PieChart,
@@ -30,7 +29,6 @@ interface DashboardStats {
     pendente: number;
     em_producao: number;
     concluido: number;
-    entregue: number;
     totalClientes: number;
     faturamentoMes: number;
     despesasTotais: number;
@@ -43,7 +41,6 @@ export default function Dashboard() {
         pendente: 0,
         em_producao: 0,
         concluido: 0,
-        entregue: 0,
         totalClientes: 0,
         faturamentoMes: 0,
         despesasTotais: 0,
@@ -56,7 +53,7 @@ export default function Dashboard() {
         if (!session) {
           navigate("/auth");
         } else {
-          await loadStats(); // Carrega os dados reais assim que confirmar a sessão
+          await loadStats();
         }
       };
       checkUser();
@@ -83,10 +80,9 @@ export default function Dashboard() {
 
             const newStats = {
                 total: pedidos.length,
-                pendente: pedidos.filter(p => p.status === "pendente").length,
+                pendente: pedidos.filter(p => p.status === "pendente").length, // No banco chamamos de pendente, mas na tela é "Realizado"
                 em_producao: pedidos.filter(p => p.status === "em_producao").length,
-                concluido: pedidos.filter(p => p.status === "concluido").length,
-                entregue: pedidos.filter(p => p.status === "entregue").length,
+                concluido: pedidos.filter(p => p.status === "concluido").length, // Na tela será "Finalizado"
                 totalClientes: clientesRes.count || 0,
                 faturamentoMes: 0,
                 despesasTotais: 0,
@@ -136,122 +132,115 @@ export default function Dashboard() {
     };
 
     if (loading) {
-        return <div className="min-h-screen flex items-center justify-center font-medium text-cyan-600">Carregando painel Fabbis...</div>;
+        return <div className="min-h-screen flex items-center justify-center font-black text-cyan-600 uppercase tracking-widest">Carregando painel Fabbis...</div>;
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-background via-muted to-background pb-12">
-            {/* Importando a fonte Allura */}
+        <div className="min-h-screen bg-gradient-to-br from-background via-muted to-background pb-12 font-sans">
             <style>
-                {`@import url('https://fonts.googleapis.com/css2?family=Allura&display=swap');
+                {`@import url('https://fonts.googleapis.com/css2?family=Allura&family=Montserrat:wght@400;700;900&display=swap');
                   .font-allura { font-family: 'Allura', cursive; }
+                  .font-montserrat { font-family: 'Montserrat', sans-serif; }
                 `}
             </style>
 
-            <header className="border-b bg-card/80 backdrop-blur-sm sticky top-0 z-50">
+            <header className="border-b bg-white/80 backdrop-blur-sm sticky top-0 z-50">
                 <div className="container mx-auto px-4 py-2 flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                        <img src={logoImg} alt="Logomarca Fabbis" className="h-16 w-auto object-contain rounded-lg" />
-                        <p className="text-3xl text-[#06B6D4] font-allura hidden md:block mt-2">Gestão Fabbis</p>
+                        <img src={logoImg} alt="Logomarca Fabbis" className="h-12 w-auto object-contain rounded-lg" />
+                        <p className="text-3xl text-[#06B6D4] font-allura hidden md:block mt-1">Gestão Fabbis</p>
                     </div>
-                    <Button variant="ghost" size="sm" onClick={handleLogout} className="text-muted-foreground hover:text-cyan-600 font-bold">
+                    <Button variant="ghost" size="sm" onClick={handleLogout} className="text-slate-400 hover:text-cyan-600 font-bold uppercase text-[10px] tracking-widest">
                         <LogOut className="h-4 w-4 mr-2" /> Sair
                     </Button>
                 </div>
             </header>
 
-            <main className="container mx-auto px-4 py-8">
-                <div className="mb-8">
-                    {/* Título com Allura e Ciano */}
-                    <h2 className="text-5xl text-[#06B6D4] font-allura mb-1">Painel de Controle</h2>
-                    <p className="text-muted-foreground font-medium uppercase text-[10px] tracking-[0.2em] ml-1">
+            <main className="container mx-auto px-4 py-8 max-w-6xl">
+                <div className="mb-8 text-center md:text-left">
+                    <h2 className="text-5xl md:text-6xl text-[#06B6D4] font-allura mb-1">Painel de Controle</h2>
+                    <p className="text-slate-400 font-black uppercase text-[10px] tracking-[0.2em] ml-1 font-montserrat">
                         Acompanhe seus pedidos e a saúde financeira do mês
                     </p>
                 </div>
 
-                {/* --- SEÇÃO 1: STATUS DOS PEDIDOS --- */}
-                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 mb-8">
-                    <Card onClick={() => navigate('/pedidos')} className="p-6 bg-white border-slate-100 hover:shadow-lg transition-shadow cursor-pointer rounded-2xl">
-                        <div className="flex items-center justify-between mb-4"><Package className="h-8 w-8 text-slate-400" /><Badge variant="secondary" className="bg-slate-50">{stats.total}</Badge></div>
-                        <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total Geral</h3>
-                        <p className="text-2xl font-black text-slate-800 tracking-tighter">{stats.total}</p>
+                {/* --- SEÇÃO 1: STATUS DOS PEDIDOS (ATUALIZADO PARA 4 CARDS) --- */}
+                <div className="grid gap-4 grid-cols-2 md:grid-cols-4 mb-10">
+                    <Card onClick={() => navigate('/pedidos')} className="p-6 bg-white border-none shadow-sm hover:shadow-lg transition-all cursor-pointer rounded-[2rem]">
+                        <div className="flex items-center justify-between mb-4"><Package className="h-6 w-6 text-slate-400" /><Badge variant="secondary" className="bg-slate-50">{stats.total}</Badge></div>
+                        <h3 className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1 font-montserrat">Total Geral</h3>
+                        <p className="text-3xl font-black text-slate-800 tracking-tighter">{stats.total}</p>
                     </Card>
 
-                    <Card onClick={() => navigate('/pedidos?status=pendente')} className="p-6 bg-white border-slate-100 hover:shadow-lg transition-shadow cursor-pointer rounded-2xl">
-                        <div className="flex items-center justify-between mb-4"><ThumbsUp className="h-8 w-8 text-amber-400" /><Badge className="bg-amber-100 text-amber-700">{stats.pendente}</Badge></div>
-                        <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Novos Pedidos</h3>
-                        <p className="text-2xl font-black text-slate-800 tracking-tighter">{stats.pendente}</p>
+                    <Card onClick={() => navigate('/pedidos?status=pendente')} className="p-6 bg-white border-none shadow-sm hover:shadow-lg transition-all cursor-pointer rounded-[2rem] border-b-4 border-amber-400">
+                        <div className="flex items-center justify-between mb-4"><ThumbsUp className="h-6 w-6 text-amber-500" /><Badge className="bg-amber-100 text-amber-700">{stats.pendente}</Badge></div>
+                        <h3 className="text-[9px] font-black text-amber-500 uppercase tracking-widest mb-1 font-montserrat">Realizados</h3>
+                        <p className="text-3xl font-black text-slate-800 tracking-tighter">{stats.pendente}</p>
                     </Card>
 
-                    <Card onClick={() => navigate('/pedidos?status=em_producao')} className="p-6 bg-white border-slate-100 hover:shadow-lg transition-shadow cursor-pointer rounded-2xl">
-                        <div className="flex items-center justify-between mb-4"><Clock className="h-8 w-8 text-[#06B6D4]" /><Badge className="bg-cyan-100 text-[#06B6D4]">{stats.em_producao}</Badge></div>
-                        <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Em Produção</h3>
-                        <p className="text-2xl font-black text-slate-800 tracking-tighter">{stats.em_producao}</p>
+                    <Card onClick={() => navigate('/pedidos?status=em_producao')} className="p-6 bg-white border-none shadow-sm hover:shadow-lg transition-all cursor-pointer rounded-[2rem] border-b-4 border-cyan-500">
+                        <div className="flex items-center justify-between mb-4"><Clock className="h-6 w-6 text-[#06B6D4]" /><Badge className="bg-cyan-100 text-[#06B6D4]">{stats.em_producao}</Badge></div>
+                        <h3 className="text-[9px] font-black text-cyan-600 uppercase tracking-widest mb-1 font-montserrat">Em Produção</h3>
+                        <p className="text-3xl font-black text-slate-800 tracking-tighter">{stats.em_producao}</p>
                     </Card>
 
-                    <Card onClick={() => navigate('/pedidos?status=concluido')} className="p-6 bg-white border-slate-100 hover:shadow-lg transition-shadow cursor-pointer rounded-2xl">
-                        <div className="flex items-center justify-between mb-4"><CheckCheck className="h-8 w-8 text-emerald-500" /><Badge className="bg-emerald-100 text-emerald-700">{stats.concluido}</Badge></div>
-                        <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Concluídos</h3>
-                        <p className="text-2xl font-black text-slate-800 tracking-tighter">{stats.concluido}</p>
-                    </Card>
-
-                    <Card onClick={() => navigate('/pedidos?status=entregue')} className="p-6 bg-white border-slate-100 hover:shadow-lg transition-shadow cursor-pointer rounded-2xl">
-                        <div className="flex items-center justify-between mb-4"><Truck className="h-8 w-8 text-indigo-400" /><Badge className="bg-indigo-100 text-indigo-700">{stats.entregue}</Badge></div>
-                        <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Entregues</h3>
-                        <p className="text-2xl font-black text-slate-800 tracking-tighter">{stats.entregue}</p>
+                    <Card onClick={() => navigate('/pedidos?status=concluido')} className="p-6 bg-white border-none shadow-sm hover:shadow-lg transition-all cursor-pointer rounded-[2rem] border-b-4 border-emerald-500">
+                        <div className="flex items-center justify-between mb-4"><CheckCheck className="h-6 w-6 text-emerald-500" /><Badge className="bg-emerald-100 text-emerald-700">{stats.concluido}</Badge></div>
+                        <h3 className="text-[9px] font-black text-emerald-600 uppercase tracking-widest mb-1 font-montserrat">Finalizados</h3>
+                        <p className="text-3xl font-black text-slate-800 tracking-tighter">{stats.concluido}</p>
                     </Card>
                 </div>
 
                 {/* --- SEÇÃO 2: AÇÕES RÁPIDAS --- */}
-                <Card className="p-8 mb-8 border-none shadow-sm rounded-3xl">
-                    <h3 className="text-3xl text-[#06B6D4] font-allura mb-6">Ações Rápidas</h3>
+                <Card className="p-8 mb-10 border-none shadow-sm rounded-[2.5rem] bg-white">
+                    <h3 className="text-4xl text-[#06B6D4] font-allura mb-6">Ações Rápidas</h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                        <Button className="w-full justify-start h-14 rounded-xl bg-[#06B6D4] hover:bg-[#0891B2] font-bold" onClick={() => navigate("/pedidos/novo")}>
-                            <Plus className="h-5 w-5 mr-3" /> Novo Pedido
+                        <Button className="w-full justify-start h-16 rounded-2xl bg-[#06B6D4] hover:bg-[#0891B2] text-white font-black shadow-lg shadow-cyan-100 transition-all active:scale-95" onClick={() => navigate("/pedidos/novo")}>
+                            <Plus className="h-5 w-5 mr-3" /> NOVO PEDIDO
                         </Button>
-                        <Button variant="outline" className="w-full justify-start h-14 rounded-xl border-slate-100 bg-slate-50 hover:bg-white font-semibold" onClick={() => navigate("/clientes")}>
-                            <Users className="h-5 w-5 mr-3 text-pink-500" /> Gerenciar Clientes
+                        <Button variant="outline" className="w-full justify-start h-16 rounded-2xl border-slate-100 bg-slate-50 hover:bg-white font-bold text-slate-600" onClick={() => navigate("/clientes")}>
+                            <Users className="h-5 w-5 mr-3 text-pink-500" /> GERENCIAR CLIENTES
                         </Button>
-                        <Button variant="outline" className="w-full justify-start h-14 rounded-xl border-slate-100 bg-slate-50 hover:bg-white font-semibold" onClick={() => navigate("/materiais")}>
-                            <Palette className="h-5 w-5 mr-3 text-purple-500" /> Meus Materiais
+                        <Button variant="outline" className="w-full justify-start h-16 rounded-2xl border-slate-100 bg-slate-50 hover:bg-white font-bold text-slate-600" onClick={() => navigate("/materiais")}>
+                            <Palette className="h-5 w-5 mr-3 text-purple-500" /> MEUS MATERIAIS
                         </Button>
-                        <Button variant="outline" className="w-full justify-start h-14 rounded-xl border-slate-100 bg-slate-50 hover:bg-white font-semibold" onClick={() => navigate('/agenda')}>
-                            <Calendar className="h-5 w-5 mr-3 text-orange-500" /> Agenda de Entregas
+                        <Button variant="outline" className="w-full justify-start h-16 rounded-2xl border-slate-100 bg-slate-50 hover:bg-white font-bold text-slate-600" onClick={() => navigate('/agenda')}>
+                            <Calendar className="h-5 w-5 mr-3 text-orange-500" /> AGENDA DE ENTREGAS
                         </Button>
-                        <Button variant="outline" className="h-14 rounded-xl border-slate-100 bg-slate-50 hover:bg-white font-semibold flex justify-start px-4" onClick={() => navigate('/financeiro')}>
-                            <DollarSign className="h-5 w-5 mr-3 text-emerald-500" /> Meu Caixa
+                        <Button variant="outline" className="w-full justify-start h-16 rounded-2xl border-slate-100 bg-slate-50 hover:bg-white font-bold text-slate-600" onClick={() => navigate('/financeiro')}>
+                            <DollarSign className="h-5 w-5 mr-3 text-emerald-500" /> MEU CAIXA
                         </Button>
-                        <Button variant="outline" className="w-full justify-start h-14 rounded-xl border-slate-100 bg-slate-50 hover:bg-white font-semibold" onClick={() => navigate('/catalogo')}>
-                            <Store className="h-5 w-5 mr-3 text-indigo-500" /> Vitrine de Biquínis
+                        <Button variant="outline" className="w-full justify-start h-16 rounded-2xl border-slate-100 bg-slate-50 hover:bg-white font-bold text-slate-600" onClick={() => navigate('/catalogo')}>
+                            <Store className="h-5 w-5 mr-3 text-indigo-500" /> VITRINE
                         </Button>
                     </div>
                 </Card>
 
                 {/* --- SEÇÃO 3: FINANCEIRO --- */}
-                <h3 className="text-3xl text-[#06B6D4] font-allura mb-6">Resumo Financeiro do Mês</h3>
+                <h3 className="text-4xl text-[#06B6D4] font-allura mb-6">Resumo Financeiro do Mês</h3>
                 <div className="grid gap-6 md:grid-cols-3">
-                    <Card className="p-8 bg-[#E7F9F0] border-none shadow-sm rounded-2xl flex items-center gap-6">
-                        <div className="h-14 w-14 rounded-full bg-[#22C55E] flex items-center justify-center text-white"><DollarSign className="h-8 w-8" /></div>
-                        <div>
-                            <h3 className="text-[10px] font-bold text-[#15803D] uppercase tracking-widest mb-1">Faturamento Estimado</h3>
-                            <p className="text-3xl font-black text-[#166534] tracking-tighter">{formatarDinheiro(stats.faturamentoMes)}</p>
+                    <Card className="p-6 bg-emerald-50/50 border-none shadow-sm rounded-[2rem] flex flex-col justify-center gap-2">
+                        <div className="flex items-center gap-3 mb-2">
+                            <div className="h-10 w-10 rounded-xl bg-emerald-500 flex items-center justify-center text-white"><DollarSign className="h-5 w-5" /></div>
+                            <h3 className="text-[10px] font-black text-emerald-700 uppercase tracking-widest font-montserrat">Faturamento Real</h3>
                         </div>
+                        <p className="text-3xl font-black text-emerald-800 tracking-tighter">{formatarDinheiro(stats.faturamentoMes)}</p>
                     </Card>
 
-                    <Card className="p-8 bg-[#FFF1F2] border-none shadow-sm rounded-2xl flex items-center gap-6">
-                        <div className="h-14 w-14 rounded-full bg-[#F43F5E] flex items-center justify-center text-white"><ArrowDownCircle className="h-6 w-6" /></div>
-                        <div>
-                            <h3 className="text-[10px] font-bold text-[#BE123C] uppercase tracking-widest mb-1">Despesas Registradas</h3>
-                            <p className="text-3xl font-black text-[#9F1239] tracking-tighter">{formatarDinheiro(stats.despesasTotais)}</p>
+                    <Card className="p-6 bg-rose-50/50 border-none shadow-sm rounded-[2rem] flex flex-col justify-center gap-2">
+                        <div className="flex items-center gap-3 mb-2">
+                            <div className="h-10 w-10 rounded-xl bg-rose-500 flex items-center justify-center text-white"><ArrowDownCircle className="h-5 w-5" /></div>
+                            <h3 className="text-[10px] font-black text-rose-700 uppercase tracking-widest font-montserrat">Despesas Registradas</h3>
                         </div>
+                        <p className="text-3xl font-black text-rose-800 tracking-tighter">{formatarDinheiro(stats.despesasTotais)}</p>
                     </Card>
 
-                    <Card className="p-8 bg-[#EFF6FF] border-none shadow-sm rounded-2xl flex items-center gap-6">
-                        <div className="h-14 w-14 rounded-full bg-[#3B82F6] flex items-center justify-center text-white"><PieChart className="h-6 w-6" /></div>
-                        <div>
-                            <h3 className="text-[10px] font-bold text-[#1D4ED8] uppercase tracking-widest mb-1">Lucro Líquido Real</h3>
-                            <p className="text-3xl font-black text-[#1E40AF] tracking-tighter">{formatarDinheiro(stats.faturamentoMes - stats.despesasTotais)}</p>
+                    <Card className="p-6 bg-blue-50/50 border-none shadow-sm rounded-[2rem] flex flex-col justify-center gap-2">
+                         <div className="flex items-center gap-3 mb-2">
+                            <div className="h-10 w-10 rounded-xl bg-blue-600 flex items-center justify-center text-white"><PieChart className="h-5 w-5" /></div>
+                            <h3 className="text-[10px] font-black text-blue-800 uppercase tracking-widest font-montserrat">Lucro Líquido</h3>
                         </div>
+                        <p className="text-3xl font-black text-blue-900 tracking-tighter">{formatarDinheiro(stats.faturamentoMes - stats.despesasTotais)}</p>
                     </Card>
                 </div>
             </main>

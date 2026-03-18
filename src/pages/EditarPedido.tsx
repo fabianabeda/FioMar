@@ -20,13 +20,13 @@ import {
     Scissors,
     Palette,
     Image as ImageIcon,
-    Info,
-    Sparkles
+    Sparkles,
+    Ruler,
+    Layers
 } from "lucide-react";
 import { toast } from "sonner";
 import logoImg from "@/assets/logo-fabbis.jpeg";
 
-// Função para garantir que fotos pesadas não travem o sistema
 const comprimirImagem = (file: File, maxWidth = 1000, quality = 0.8): Promise<File> => {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -74,7 +74,7 @@ export default function EditarPedido() {
         try {
             const [clientesRes, materiaisRes, pedidoRes] = await Promise.all([
                 supabase.from("clientes").select("id, nome_completo").order("nome_completo"),
-                supabase.from("materiais").select("*").order("created_at", { ascending: false }),
+                supabase.from("materiais").select("*").order("nome", { ascending: true }),
                 supabase.from("pedidos").select("*").eq("id", id).single()
             ]);
 
@@ -117,28 +117,26 @@ export default function EditarPedido() {
         }
     };
 
+    const copiarFrenteParaRolete = () => {
+        if (formData.cor_frente) {
+            setFormData(prev => ({ ...prev, cor_roletes: prev.cor_frente }));
+            toast.success("Rolete igual ao tecido da frente! ✨");
+        }
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setSaving(true);
         let urlDaFotoFinal = fotoOriginal;
 
         try {
-            // Se houver nova foto, faz upload e limpa a antiga
             if (arquivoFoto) {
                 const fotoParaEnviar = await comprimirImagem(arquivoFoto).catch(() => arquivoFoto);
-                const nomeArquivo = `edit-${Date.now()}-${Math.random().toString(36).substring(7)}.jpg`;
-
+                const nomeArquivo = `edit-${Date.now()}.jpg`;
                 const { error: uploadError } = await supabase.storage.from("pedidos").upload(nomeArquivo, fotoParaEnviar);
                 if (uploadError) throw uploadError;
-
                 const { data } = supabase.storage.from("pedidos").getPublicUrl(nomeArquivo);
                 urlDaFotoFinal = data.publicUrl;
-
-                // Remove a foto antiga para não acumular lixo
-                if (fotoOriginal) {
-                    const nomeAntigo = fotoOriginal.split('/').pop();
-                    if (nomeAntigo) await supabase.storage.from("pedidos").remove([nomeAntigo]);
-                }
             }
 
             const { error } = await supabase.from("pedidos").update({
@@ -149,233 +147,176 @@ export default function EditarPedido() {
             }).eq("id", id);
 
             if (error) throw error;
-            toast.success("Ajustes realizados com sucesso! ✨");
-            navigate(-1);
-        } catch (error) { toast.error("Erro ao salvar alterações."); } finally { setSaving(false); }
+            toast.success("Pedido atualizado com sucesso! ✨");
+            navigate("/pedidos");
+        } catch (error) { toast.error("Erro ao salvar."); } finally { setSaving(false); }
     };
 
-    const RenderSeletorVisual = ({ tipo, label, campoDestino, icon: Icon, colorClass }: any) => {
-        const opcoes = materiais.filter(m => m.categoria?.toLowerCase() === tipo.toLowerCase());
+    const RenderSeletorVisual = ({ tipo, label, campoDestino, icon: Icon, colorClass, showCopy }: any) => {
+        const filtroTipo = tipo === "rolete" ? "tecido" : tipo;
+        const opcoes = materiais.filter(m => m.tipo === filtroTipo);
         const valorAtual = formData[campoDestino as keyof typeof formData] as string;
 
         return (
             <div className="bg-white p-5 rounded-[2rem] border-none shadow-sm space-y-4">
-                <div className="flex items-center gap-2">
-                    <Icon className={`h-4 w-4 ${colorClass}`} />
-                    <Label className="font-black text-slate-400 uppercase text-[10px] tracking-widest">{label}</Label>
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        <Icon className={`h-4 w-4 ${colorClass}`} />
+                        <Label className="font-black text-slate-400 uppercase text-[9px] tracking-widest">{label}</Label>
+                    </div>
+                    {showCopy && (
+                        <button type="button" onClick={copiarFrenteParaRolete} className="text-[8px] font-black text-cyan-600 bg-cyan-50 px-2 py-1 rounded-full uppercase">Igual à frente</button>
+                    )}
                 </div>
-                <div className="flex gap-3 overflow-x-auto pb-3 custom-scrollbar">
+                <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
                     {opcoes.map(m => (
-                        <div
-                            key={m.id}
-                            onClick={() => setFormData({...formData, [campoDestino]: m.nome})}
-                            className="flex flex-col items-center gap-2 cursor-pointer min-w-[80px]"
-                        >
-                            <div className={`w-16 h-16 rounded-[1.2rem] overflow-hidden border-4 transition-all ${valorAtual === m.nome ? 'border-cyan-500 scale-110 shadow-lg' : 'border-slate-50 opacity-40'}`}>
-                                {m.foto_url ? <img src={m.foto_url} className="w-full h-full object-cover" /> : <div className="w-full h-full bg-slate-100 flex items-center justify-center"><ImageIcon className="h-5 w-5 text-slate-300" /></div>}
+                        <div key={m.id} onClick={() => setFormData({...formData, [campoDestino]: m.nome})} className={`flex flex-col items-center gap-2 cursor-pointer min-w-[70px] transition-all ${valorAtual === m.nome ? 'scale-110' : 'opacity-40 hover:opacity-100'}`}>
+                            <div className={`w-14 h-14 rounded-2xl overflow-hidden border-4 ${valorAtual === m.nome ? 'border-cyan-500 shadow-md' : 'border-slate-50'}`}>
+                                {m.foto_url ? <img src={m.foto_url} className="w-full h-full object-cover" /> : <div className="w-full h-full bg-slate-50 flex items-center justify-center"><ImageIcon className="h-5 w-5 text-slate-200" /></div>}
                             </div>
-                            <span className="text-[9px] font-black text-center w-full truncate text-slate-500 uppercase">{m.nome}</span>
+                            <span className="text-[8px] font-black text-center w-full truncate text-slate-500 uppercase">{m.nome}</span>
                         </div>
                     ))}
                 </div>
-                <Input
-                    placeholder="Ou especifique manualmente..."
-                    value={valorAtual}
-                    onChange={(e) => setFormData({...formData, [campoDestino]: e.target.value})}
-                    className="h-12 rounded-xl bg-slate-50 border-none font-bold text-slate-600"
-                />
+                <Input value={valorAtual} onChange={(e) => setFormData({...formData, [campoDestino]: e.target.value})} className="h-10 rounded-xl bg-slate-50 border-none font-bold text-slate-700 text-xs" />
             </div>
         );
     };
 
-    if (loading) return (
-        <div className="min-h-screen flex items-center justify-center bg-slate-50">
-            <div className="text-center">
-                <Loader2 className="animate-spin h-10 w-10 text-cyan-500 mx-auto mb-4" />
-                <p className="font-black text-slate-400 uppercase tracking-widest text-xs">Buscando Detalhes...</p>
-            </div>
-        </div>
-    );
+    if (loading) return <div className="min-h-screen flex items-center justify-center font-black text-cyan-600 uppercase tracking-widest">Buscando Ficha...</div>;
 
     return (
         <div className="min-h-screen bg-[#FAFBFC] pb-12 font-sans">
             <style>{`@import url('https://fonts.googleapis.com/css2?family=Allura&family=Montserrat:wght@400;700;900&display=swap');`}</style>
 
             <header className="bg-white border-b sticky top-0 z-40 shadow-sm">
-                <div className="container mx-auto px-4 py-3 flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                        <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="rounded-full">
-                            <ArrowLeft className="h-5 w-5 text-slate-400" />
-                        </Button>
-                        <img src={logoImg} alt="Fabbis" className="h-10 w-auto rounded-lg" />
-                    </div>
-                    <span className="text-[10px] font-black text-cyan-600 uppercase tracking-[0.2em] bg-cyan-50 px-4 py-2 rounded-full">
-                        Pedido #{id?.substring(0, 5)}
-                    </span>
+                <div className="container mx-auto px-4 py-2 flex items-center justify-between">
+                    <img src={logoImg} alt="Fabbis" className="h-10 w-auto rounded-lg" />
+                    <Button variant="ghost" size="sm" onClick={() => navigate("/pedidos")} className="font-bold text-slate-400"><ArrowLeft className="h-4 w-4 mr-2" /> Voltar</Button>
                 </div>
             </header>
 
-            <main className="container mx-auto px-4 py-10 max-w-4xl">
-                <div className="text-center mb-12">
-                    <h1 className="leading-tight flex flex-col items-center">
-                        <span className="text-7xl text-cyan-500" style={{ fontFamily: "'Allura', cursive" }}>Ajustar</span>
-                        <span className="text-2xl font-black text-slate-400 uppercase tracking-[0.2em] -mt-4" style={{ fontFamily: "'Montserrat', sans-serif" }}>A Encomenda</span>
+            <main className="container mx-auto px-4 py-8 max-w-4xl">
+                <div className="text-center mb-10">
+                    <h1 className="leading-tight">
+                        <span className="text-7xl text-cyan-500" style={{ fontFamily: "'Allura', cursive" }}>Editar</span>
+                        <span className="block text-2xl font-black text-slate-400 uppercase tracking-[0.2em] -mt-4" style={{ fontFamily: "'Montserrat', sans-serif" }}>Pedido</span>
                     </h1>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-8">
-                    {/* INFORMAÇÕES BÁSICAS */}
-                    <Card className="p-8 rounded-[3rem] border-none shadow-xl shadow-slate-100 space-y-6 bg-white">
-                        <div className="space-y-3">
-                            <Label className="font-black text-slate-400 uppercase text-[10px] tracking-widest ml-1">Cliente Solicitante</Label>
+                    {/* CLIENTE E PRODUTO */}
+                    <Card className="p-8 rounded-[2.5rem] border-none shadow-sm space-y-6 bg-white">
+                        <div className="space-y-2">
+                            <Label className="font-black text-slate-300 uppercase text-[9px] tracking-widest ml-1">Cliente</Label>
                             <Select value={formData.cliente_id} onValueChange={(v) => setFormData({...formData, cliente_id: v})}>
-                                <SelectTrigger className="h-14 rounded-2xl bg-slate-50 border-none font-bold text-slate-700">
+                                <SelectTrigger className="h-14 rounded-2xl bg-slate-50 border-none font-black text-slate-700 px-6">
                                     <SelectValue placeholder="Selecione a cliente..." />
                                 </SelectTrigger>
-                                <SelectContent>
-                                    {clientes.map(c => <SelectItem key={c.id} value={c.id}>{c.nome_completo}</SelectItem>)}
+                                <SelectContent className="rounded-2xl border-none shadow-2xl">
+                                    {clientes.map(c => <SelectItem key={c.id} value={c.id} className="font-bold">{c.nome_completo}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                         </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="space-y-3">
-                                <Label className="font-black text-slate-400 uppercase text-[10px] tracking-widest ml-1">Peça</Label>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label className="font-black text-slate-300 uppercase text-[9px] tracking-widest">Produto</Label>
                                 <Select value={formData.produto} onValueChange={(v) => setFormData({...formData, produto: v})}>
-                                    <SelectTrigger className="h-14 rounded-2xl bg-slate-50 border-none font-bold">
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="Biquíni">Biquíni</SelectItem>
-                                        <SelectItem value="Maiô">Maiô</SelectItem>
-                                        <SelectItem value="Saída de Praia">Saída de Praia</SelectItem>
-                                    </SelectContent>
+                                    <SelectTrigger className="h-14 rounded-2xl bg-slate-50 border-none font-black text-slate-700"><SelectValue /></SelectTrigger>
+                                    <SelectContent><SelectItem value="Biquíni">Biquíni</SelectItem><SelectItem value="Maiô">Maiô</SelectItem><SelectItem value="Saída">Saída</SelectItem></SelectContent>
                                 </Select>
                             </div>
-                            <div className="space-y-3">
-                                <Label className="font-black text-slate-400 uppercase text-[10px] tracking-widest ml-1">Tamanho</Label>
+                            <div className="space-y-2">
+                                <Label className="font-black text-slate-300 uppercase text-[9px] tracking-widest">Tamanho</Label>
                                 <Select value={formData.tamanho} onValueChange={(v) => setFormData({...formData, tamanho: v})}>
-                                    <SelectTrigger className="h-14 rounded-2xl bg-slate-50 border-none font-bold">
-                                        <SelectValue />
-                                    </SelectTrigger>
+                                    <SelectTrigger className="h-14 rounded-2xl bg-slate-50 border-none font-black text-slate-700"><SelectValue /></SelectTrigger>
+                                    <SelectContent>{["PP", "P", "M", "G", "GG"].map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+                    </Card>
+
+                    {/* DESIGN & MATERIAIS */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <RenderSeletorVisual tipo="tecido" label="Tecido Frente" campoDestino="cor_frente" icon={Scissors} colorClass="text-pink-500" />
+                        <RenderSeletorVisual tipo="tecido" label="Tecido Verso" campoDestino="cor_verso" icon={Scissors} colorClass="text-blue-500" />
+                        <RenderSeletorVisual tipo="linha" label="Linha Crochê" campoDestino="cor_linha" icon={Palette} colorClass="text-cyan-500" />
+                        <RenderSeletorVisual tipo="rolete" label="Roletes (Tecido)" campoDestino="cor_roletes" icon={Layers} colorClass="text-cyan-500" showCopy={true} />
+                    </div>
+
+                    {/* FICHA DE CORTE (SELECTS IGUAIS AO NOVO PEDIDO) */}
+                    <Card className="p-8 rounded-[2.5rem] border-none shadow-sm space-y-6 bg-white">
+                        <div className="flex items-center gap-2 border-b border-slate-50 pb-4">
+                            <Ruler className="h-4 w-4 text-slate-400" />
+                            <h3 className="font-black text-slate-800 text-xs uppercase tracking-widest">Ficha de Corte</h3>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-4 p-5 bg-slate-50/50 rounded-3xl">
+                                <Label className="text-[9px] font-black text-cyan-600 uppercase tracking-widest ml-1">Parte Superior</Label>
+                                <Select value={formData.modelo_cima} onValueChange={(v) => setFormData({...formData, modelo_cima: v})}>
+                                    <SelectTrigger className="h-11 bg-white rounded-xl border-none shadow-sm font-bold"><SelectValue placeholder="Modelo do Top" /></SelectTrigger>
                                     <SelectContent>
-                                        {['PP', 'P', 'M', 'G', 'GG'].map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                                        <SelectItem value="Cortininha">Cortininha</SelectItem>
+                                        <SelectItem value="Fixo">Fixo / Triângulo</SelectItem>
+                                        <SelectItem value="Meia Taça">Meia Taça</SelectItem>
+                                        <SelectItem value="Tomara que caia">Tomara que caia</SelectItem>
+                                        <SelectItem value="Top Faixa">Top Faixa</SelectItem>
+                                        <SelectItem value="Varetinha">Varetinha</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <Select value={formData.tem_bojo} onValueChange={(v) => setFormData({...formData, tem_bojo: v})}>
+                                    <SelectTrigger className="h-11 bg-white rounded-xl border-none shadow-sm font-bold"><SelectValue /></SelectTrigger>
+                                    <SelectContent><SelectItem value="true">Com Bojo</SelectItem><SelectItem value="false">Sem Bojo</SelectItem></SelectContent>
+                                </Select>
+                            </div>
+                            <div className="space-y-4 p-5 bg-slate-50/50 rounded-3xl">
+                                <Label className="text-[9px] font-black text-cyan-600 uppercase tracking-widest ml-1">Parte Inferior</Label>
+                                <Select value={formData.modelo_baixo} onValueChange={(v) => setFormData({...formData, modelo_baixo: v})}>
+                                    <SelectTrigger className="h-11 bg-white rounded-xl border-none shadow-sm font-bold"><SelectValue placeholder="Modelo da Calcinha" /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="Asa Delta">Asa Delta</SelectItem>
+                                        <SelectItem value="Tradicional">Tradicional / Comportada</SelectItem>
+                                        <SelectItem value="Meio Fio">Meio Fio</SelectItem>
+                                        <SelectItem value="Fio Dental">Fio Dental</SelectItem>
+                                        <SelectItem value="Larga Confort">Larga / Confort</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <Select value={formData.tipo_lateral_baixo} onValueChange={(v) => setFormData({...formData, tipo_lateral_baixo: v})}>
+                                    <SelectTrigger className="h-11 bg-white rounded-xl border-none shadow-sm font-bold"><SelectValue placeholder="Tipo da Lateral" /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="Normal (Inteira)">Normal (Inteira)</SelectItem>
+                                        <SelectItem value="De Amarrar (Lacinho)">De Amarrar (Lacinho)</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
                         </div>
                     </Card>
 
-                    {/* SELETORES VISUAIS */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <RenderSeletorVisual tipo="Tecido" label="Cor Frente" campoDestino="cor_frente" icon={Scissors} colorClass="text-pink-500" />
-                        <RenderSeletorVisual tipo="Tecido" label="Cor Verso" campoDestino="cor_verso" icon={Scissors} colorClass="text-pink-500" />
-                        <RenderSeletorVisual tipo="Linha" label="Linha Crochê" campoDestino="cor_linha" icon={Palette} colorClass="text-cyan-500" />
-                        <RenderSeletorVisual tipo="Bojo" label="Acessórios" campoDestino="cor_roletes" icon={Sparkles} colorClass="text-amber-500" />
-                    </div>
-
-                    {/* DETALHES TÉCNICOS */}
-                    <Card className="p-8 rounded-[3rem] border-none shadow-xl shadow-slate-100 space-y-8 bg-white overflow-hidden relative">
-                         <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-50 rounded-bl-[5rem] -z-0 opacity-50" />
-
-                         <div className="relative z-10 space-y-6">
-                            <h3 className="font-black text-slate-800 text-xs uppercase tracking-[0.2em] mb-4">Especificações de Modelagem</h3>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                <div className="space-y-4 p-6 bg-slate-50 rounded-[2rem]">
-                                    <div className="space-y-2">
-                                        <Label className="font-black text-cyan-600 text-[9px] uppercase tracking-widest">Modelo Superior</Label>
-                                        <Input value={formData.modelo_cima} onChange={(e) => setFormData({...formData, modelo_cima: e.target.value})} className="h-12 bg-white border-none rounded-xl font-bold" />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label className="font-black text-cyan-600 text-[9px] uppercase tracking-widest">Contém Bojo?</Label>
-                                        <Select value={formData.tem_bojo} onValueChange={(v) => setFormData({...formData, tem_bojo: v})}>
-                                            <SelectTrigger className="h-12 bg-white border-none rounded-xl font-bold"><SelectValue /></SelectTrigger>
-                                            <SelectContent><SelectItem value="true">Sim</SelectItem><SelectItem value="false">Não</SelectItem></SelectContent>
-                                        </Select>
-                                    </div>
-                                </div>
-
-                                <div className="space-y-4 p-6 bg-pink-50/50 rounded-[2rem]">
-                                    <div className="space-y-2">
-                                        <Label className="font-black text-pink-600 text-[9px] uppercase tracking-widest">Modelo Inferior</Label>
-                                        <Input value={formData.modelo_baixo} onChange={(e) => setFormData({...formData, modelo_baixo: e.target.value})} className="h-12 bg-white border-none rounded-xl font-bold" />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label className="font-black text-pink-600 text-[9px] uppercase tracking-widest">Tipo Lateral</Label>
-                                        <Input value={formData.tipo_lateral_baixo} onChange={(e) => setFormData({...formData, tipo_lateral_baixo: e.target.value})} className="h-12 bg-white border-none rounded-xl font-bold" />
-                                    </div>
-                                </div>
+                    {/* FOTO, PRAZO E OBSERVAÇÕES */}
+                    <Card className="p-8 rounded-[2.5rem] border-none shadow-sm space-y-6 bg-white">
+                        <div onClick={() => inputFileRef.current?.click()} className="h-40 w-full border-2 border-dashed border-slate-100 rounded-[2rem] flex flex-col items-center justify-center cursor-pointer overflow-hidden relative">
+                            {previewUrl ? <img src={previewUrl} className="w-full h-full object-cover" /> : <div className="text-center"><Camera className="h-7 w-7 text-slate-200 mx-auto" /><p className="text-[9px] font-black text-slate-300 uppercase mt-2">Trocar Foto</p></div>}
+                            <input type="file" accept="image/*" ref={inputFileRef} className="hidden" onChange={handleSelecionarFoto} />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label className="font-black text-amber-500 uppercase text-[9px] tracking-widest">Entrega</Label>
+                                <Input type="date" value={formData.data_entrega} onChange={(e) => setFormData({...formData, data_entrega: e.target.value})} className="h-14 rounded-2xl bg-amber-50/30 border-none font-black" />
                             </div>
-                         </div>
-                    </Card>
-
-                    {/* FOTO E FECHAMENTO */}
-                    <Card className="p-8 rounded-[3rem] border-none shadow-xl shadow-slate-100 space-y-8 bg-white">
-                        <div className="space-y-4">
-                            <Label className="font-black text-slate-400 uppercase text-[10px] tracking-widest ml-1">Imagem de Referência</Label>
-                            <div
-                                onClick={() => inputFileRef.current?.click()}
-                                className="h-64 w-full border-4 border-dashed border-slate-50 bg-slate-50/50 rounded-[2.5rem] flex items-center justify-center cursor-pointer hover:bg-cyan-50/30 transition-all overflow-hidden relative group"
-                            >
-                                {previewUrl ? (
-                                    <>
-                                        <img src={previewUrl} className="w-full h-full object-cover" />
-                                        <div className="absolute inset-0 bg-slate-900/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <div className="bg-white/20 backdrop-blur-md p-4 rounded-2xl flex items-center gap-2">
-                                                <Camera className="text-white h-5 w-5" />
-                                                <span className="text-white font-black text-[10px] uppercase">Alterar Foto</span>
-                                            </div>
-                                        </div>
-                                    </>
-                                ) : (
-                                    <div className="text-center">
-                                        <Camera className="h-10 w-10 text-slate-200 mx-auto mb-2" />
-                                        <p className="font-black text-slate-300 text-[10px] uppercase">Anexar Inspiração</p>
-                                    </div>
-                                )}
-                                <input type="file" accept="image/*" ref={inputFileRef} className="hidden" onChange={handleSelecionarFoto} />
+                            <div className="space-y-2">
+                                <Label className="font-black text-green-500 uppercase text-[9px] tracking-widest">Valor</Label>
+                                <Input type="number" step="0.01" value={formData.valor} onChange={(e) => setFormData({...formData, valor: e.target.value})} className="h-14 rounded-2xl bg-green-50/30 border-none font-black text-green-700" />
                             </div>
                         </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                            <div className="space-y-3">
-                                <Label className="font-black text-rose-400 uppercase text-[10px] tracking-widest ml-1">Nova Data de Entrega</Label>
-                                <Input type="date" value={formData.data_entrega} onChange={(e) => setFormData({...formData, data_entrega: e.target.value})} required className="h-14 rounded-2xl bg-rose-50 border-none font-black text-rose-700 text-lg" />
-                            </div>
-                            <div className="space-y-3">
-                                <Label className="font-black text-emerald-400 uppercase text-[10px] tracking-widest ml-1">Valor Final</Label>
-                                <div className="relative">
-                                    <span className="absolute left-4 top-4 font-black text-emerald-600/50">R$</span>
-                                    <Input type="number" step="0.01" value={formData.valor} onChange={(e) => setFormData({...formData, valor: e.target.value})} required className="h-14 rounded-2xl bg-emerald-50 border-none font-black text-emerald-700 text-xl pl-12" />
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="space-y-3">
-                            <Label className="font-black text-slate-400 uppercase text-[10px] tracking-widest ml-1">Notas Internas</Label>
-                            <Input value={formData.observacoes} onChange={(e) => setFormData({...formData, observacoes: e.target.value})} className="h-14 rounded-2xl bg-slate-50 border-none font-medium text-slate-600" />
+                        <div className="space-y-2">
+                            <Label className="font-black text-slate-300 uppercase text-[9px] tracking-widest">Observações Importantes</Label>
+                            <textarea value={formData.observacoes} onChange={(e) => setFormData({...formData, observacoes: e.target.value})} className="w-full min-h-[100px] p-4 rounded-2xl bg-slate-50 border-none font-bold text-slate-700 text-sm outline-none resize-none" placeholder="Detalhes extras..." />
                         </div>
                     </Card>
 
-                    {/* BOTÕES */}
-                    <div className="flex flex-col md:flex-row gap-4">
-                        <Button
-                            type="submit"
-                            disabled={saving}
-                            className="flex-1 h-20 bg-slate-900 hover:bg-black text-white font-black rounded-[2rem] text-lg uppercase tracking-[0.2em] shadow-2xl transition-all active:scale-95"
-                        >
-                            {saving ? <Loader2 className="animate-spin h-6 w-6" /> : <div className="flex items-center gap-3"><Save className="h-5 w-5" /> <span>Salvar Ajustes</span></div>}
-                        </Button>
-                        <Button
-                            type="button"
-                            variant="ghost"
-                            className="h-20 px-10 font-black text-slate-400 uppercase tracking-widest text-xs"
-                            onClick={() => navigate(-1)}
-                        >
-                            Cancelar
-                        </Button>
-                    </div>
+                    <Button type="submit" disabled={saving} className="w-full h-20 bg-slate-900 text-white font-black rounded-[2.5rem] text-xl uppercase tracking-widest shadow-xl transition-all active:scale-95">
+                        {saving ? <Loader2 className="animate-spin" /> : "Salvar Alterações ✨"}
+                    </Button>
                 </form>
             </main>
         </div>

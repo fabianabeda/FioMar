@@ -114,102 +114,74 @@ export default function NovoMaterial() {
           </h1>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <Card className="p-8 rounded-[2.5rem] border-none shadow-xl shadow-slate-100 space-y-8 bg-white">
-
-            {/* NOME E CATEGORIA */}
-            <div className="space-y-6">
-                <div className="space-y-3">
-                <div className="flex items-center gap-2 ml-1">
-                    <Tags className="h-3 w-3 text-cyan-500" />
-                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Nome do Material</label>
-                </div>
-                <Input
-                    required
-                    placeholder="Ex: Lycra Shine Ouro, Elástico 10mm..."
-                    value={formData.nome}
-                    onChange={(e) => setFormData({...formData, nome: e.target.value})}
-                    className="h-14 rounded-2xl bg-slate-50 border-none font-bold text-slate-700 focus-visible:ring-cyan-500"
-                />
-                </div>
-
-                <div className="space-y-3">
-                <div className="flex items-center gap-2 ml-1">
-                    <Layers className="h-3 w-3 text-cyan-500" />
-                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Categoria / Tipo</label>
-                </div>
-                <Input
-                    required
-                    placeholder="Ex: Tecido, Linha, Aviamento..."
-                    value={formData.categoria}
-                    onChange={(e) => setFormData({...formData, categoria: e.target.value})}
-                    className="h-14 rounded-2xl bg-slate-50 border-none font-bold text-slate-700"
-                />
-                </div>
+        <form onSubmit={handleSalvar} className="space-y-4 mt-4">
+            {/* ÁREA DA FOTO (Compacta) */}
+            <div
+                onClick={() => inputFileRef.current?.click()}
+                className="relative h-40 w-full border-2 border-dashed border-cyan-100 bg-cyan-50/20 rounded-[2rem] flex flex-col items-center justify-center cursor-pointer overflow-hidden group"
+            >
+                {previewUrl ? (
+                    <img src={previewUrl} className="h-full w-full object-cover" />
+                ) : (
+                    <div className="text-center">
+                        <Camera className="h-6 w-6 text-[#06B6D4] mx-auto mb-1" />
+                        <p className="text-[9px] font-black text-[#06B6D4] uppercase tracking-widest">Foto do Material</p>
+                    </div>
+                )}
+                <input type="file" accept="image/*" ref={inputFileRef} className="hidden" onChange={handleSelecionarFoto} />
             </div>
 
-            {/* QUANTIDADES */}
-            <div className="grid grid-cols-2 gap-6">
-              <div className="space-y-3">
-                <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Quantidade Atual</label>
-                <div className="relative">
+            {/* NOME */}
+            <div className="space-y-1">
+                <label className="text-[10px] font-black uppercase text-slate-400 ml-2 tracking-widest font-montserrat">Nome</label>
+                <Input
+                    placeholder="Ex: Lycra Shine Ouro"
+                    value={novoMat.nome}
+                    onChange={e => setNovoMat({...novoMat, nome: e.target.value})}
+                    className="h-11 rounded-xl bg-slate-50 border-none px-4 font-bold text-slate-700"
+                />
+            </div>
+
+            {/* GRID: CATEGORIA E QUANTIDADE */}
+            <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                    <label className="text-[10px] font-black uppercase text-slate-400 ml-2 tracking-widest font-montserrat">Tipo</label>
+                    <select
+                        value={novoMat.tipo}
+                        onChange={e => setNovoMat({...novoMat, tipo: e.target.value})}
+                        className="w-full h-11 rounded-xl bg-slate-50 border-none px-4 font-bold text-slate-700 cursor-pointer"
+                    >
+                        <option value="tecido">Tecido</option>
+                        <option value="linha">Linha</option>
+                    </select>
+                </div>
+                <div className="space-y-1">
+                    <label className="text-[10px] font-black uppercase text-slate-400 ml-2 tracking-widest font-montserrat">Qtd (Metros/Un)</label>
                     <Input
                         type="number"
-                        step="0.01"
-                        required
-                        value={formData.quantidade}
-                        onChange={(e) => setFormData({...formData, quantidade: Number(e.target.value)})}
-                        className="h-14 rounded-2xl bg-slate-50 border-none font-black text-slate-700 text-lg pl-6"
+                        placeholder="0.00"
+                        className="h-11 rounded-xl bg-slate-50 border-none px-4 font-bold text-slate-700"
+                        // onChange={(e) => setNovoMat({...novoMat, quantidade: e.target.value})}
                     />
-                    <ShoppingBag className="absolute right-4 top-4 h-5 w-5 text-slate-200" />
                 </div>
-              </div>
-              <div className="space-y-3">
-                <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Unidade</label>
-                <Input
-                  placeholder="Ex: metros, un, rolo"
-                  value={formData.unidade_medida}
-                  onChange={(e) => setFormData({...formData, unidade_medida: e.target.value})}
-                  className="h-14 rounded-2xl bg-slate-50 border-none font-bold text-slate-600"
-                />
-              </div>
             </div>
 
-            {/* ALERTA DE ESTOQUE */}
-            <div className="bg-amber-50/50 p-6 rounded-[2rem] border border-amber-100/50 space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="bg-amber-500 p-2 rounded-xl">
-                    <AlertCircle className="h-4 w-4 text-white" />
+            {/* AVISO SOBRE ROLETES */}
+            {novoMat.tipo === 'tecido' && (
+                <div className="p-3 bg-cyan-50/50 rounded-2xl border border-cyan-100/50">
+                    <p className="text-[9px] text-[#06B6D4] font-bold uppercase leading-tight text-center">
+                        ✨ Tecido pronto para ser selecionado como Rolete nos pedidos.
+                    </p>
                 </div>
-                <div>
-                    <label className="text-[10px] font-black uppercase text-amber-700 tracking-widest">Estoque Mínimo</label>
-                    <p className="text-[9px] text-amber-600/70 font-bold uppercase">Aviso de reposição</p>
-                </div>
-              </div>
-
-              <Input
-                type="number"
-                step="0.1"
-                required
-                value={formData.estoque_minimo}
-                onChange={(e) => setFormData({...formData, estoque_minimo: Number(e.target.value)})}
-                className="h-14 rounded-2xl border-none bg-white shadow-inner font-black text-amber-700 text-xl"
-              />
-            </div>
+            )}
 
             <Button
-              type="submit"
-              disabled={loading}
-              className="w-full h-20 bg-slate-900 hover:bg-black text-white font-black rounded-[2rem] text-lg shadow-xl shadow-slate-100 transition-all uppercase tracking-[0.2em] active:scale-95"
+                type="submit"
+                className="w-full h-14 bg-[#06B6D4] hover:bg-[#0891B2] text-white rounded-2xl font-black shadow-lg shadow-cyan-100 transition-all active:scale-95"
+                disabled={salvando}
             >
-              {loading ? <Loader2 className="animate-spin h-6 w-6" /> : (
-                <div className="flex items-center gap-3">
-                   <Save className="h-5 w-5" />
-                   <span>{id ? "Atualizar" : "Salvar"} Material</span>
-                </div>
-              )}
+                {salvando ? "SALVANDO NO ATELIÊ..." : "CADASTRAR MATERIAL"}
             </Button>
-          </Card>
         </form>
       </main>
     </div>
