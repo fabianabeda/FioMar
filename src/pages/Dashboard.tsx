@@ -80,9 +80,10 @@ export default function Dashboard() {
 
             const newStats = {
                 total: pedidos.length,
-                pendente: pedidos.filter(p => p.status === "pendente").length, // No banco chamamos de pendente, mas na tela é "Realizado"
+                // AQUI ESTÁ A CORREÇÃO: O sistema agora conta "realizados" e "finalizados"
+                pendente: pedidos.filter(p => p.status === "realizados").length,
                 em_producao: pedidos.filter(p => p.status === "em_producao").length,
-                concluido: pedidos.filter(p => p.status === "concluido").length, // Na tela será "Finalizado"
+                concluido: pedidos.filter(p => p.status === "finalizados").length,
                 totalClientes: clientesRes.count || 0,
                 faturamentoMes: 0,
                 despesasTotais: 0,
@@ -132,7 +133,7 @@ export default function Dashboard() {
     };
 
     if (loading) {
-        return <div className="min-h-screen flex items-center justify-center font-black text-cyan-600 uppercase tracking-widest">Carregando painel Fabbis...</div>;
+        return <div className="min-h-screen flex items-center justify-center font-black text-[#06B6D4] uppercase tracking-widest">Carregando painel Fabbis...</div>;
     }
 
     return (
@@ -150,7 +151,7 @@ export default function Dashboard() {
                         <img src={logoImg} alt="Logomarca Fabbis" className="h-12 w-auto object-contain rounded-lg" />
                         <p className="text-3xl text-[#06B6D4] font-allura hidden md:block mt-1">Gestão Fabbis</p>
                     </div>
-                    <Button variant="ghost" size="sm" onClick={handleLogout} className="text-slate-400 hover:text-cyan-600 font-bold uppercase text-[10px] tracking-widest">
+                    <Button variant="ghost" size="sm" onClick={handleLogout} className="text-slate-400 hover:text-[#06B6D4] font-bold uppercase text-[10px] tracking-widest">
                         <LogOut className="h-4 w-4 mr-2" /> Sair
                     </Button>
                 </div>
@@ -164,7 +165,6 @@ export default function Dashboard() {
                     </p>
                 </div>
 
-                {/* --- SEÇÃO 1: STATUS DOS PEDIDOS (ATUALIZADO PARA 4 CARDS) --- */}
                 <div className="grid gap-4 grid-cols-2 md:grid-cols-4 mb-10">
                     <Card onClick={() => navigate('/pedidos')} className="p-6 bg-white border-none shadow-sm hover:shadow-lg transition-all cursor-pointer rounded-[2rem]">
                         <div className="flex items-center justify-between mb-4"><Package className="h-6 w-6 text-slate-400" /><Badge variant="secondary" className="bg-slate-50">{stats.total}</Badge></div>
@@ -172,26 +172,26 @@ export default function Dashboard() {
                         <p className="text-3xl font-black text-slate-800 tracking-tighter">{stats.total}</p>
                     </Card>
 
-                    <Card onClick={() => navigate('/pedidos?status=pendente')} className="p-6 bg-white border-none shadow-sm hover:shadow-lg transition-all cursor-pointer rounded-[2rem] border-b-4 border-amber-400">
+                    {/* CORREÇÃO NOS LINKS DE NAVEGAÇÃO DOS CARDS */}
+                    <Card onClick={() => navigate('/pedidos?status=realizados')} className="p-6 bg-white border-none shadow-sm hover:shadow-lg transition-all cursor-pointer rounded-[2rem] border-b-4 border-amber-400">
                         <div className="flex items-center justify-between mb-4"><ThumbsUp className="h-6 w-6 text-amber-500" /><Badge className="bg-amber-100 text-amber-700">{stats.pendente}</Badge></div>
                         <h3 className="text-[9px] font-black text-amber-500 uppercase tracking-widest mb-1 font-montserrat">Realizados</h3>
                         <p className="text-3xl font-black text-slate-800 tracking-tighter">{stats.pendente}</p>
                     </Card>
 
-                    <Card onClick={() => navigate('/pedidos?status=em_producao')} className="p-6 bg-white border-none shadow-sm hover:shadow-lg transition-all cursor-pointer rounded-[2rem] border-b-4 border-cyan-500">
+                    <Card onClick={() => navigate('/pedidos?status=em_producao')} className="p-6 bg-white border-none shadow-sm hover:shadow-lg transition-all cursor-pointer rounded-[2rem] border-b-4 border-[#06B6D4]">
                         <div className="flex items-center justify-between mb-4"><Clock className="h-6 w-6 text-[#06B6D4]" /><Badge className="bg-cyan-100 text-[#06B6D4]">{stats.em_producao}</Badge></div>
-                        <h3 className="text-[9px] font-black text-cyan-600 uppercase tracking-widest mb-1 font-montserrat">Em Produção</h3>
+                        <h3 className="text-[9px] font-black text-[#06B6D4] uppercase tracking-widest mb-1 font-montserrat">Em Produção</h3>
                         <p className="text-3xl font-black text-slate-800 tracking-tighter">{stats.em_producao}</p>
                     </Card>
 
-                    <Card onClick={() => navigate('/pedidos?status=concluido')} className="p-6 bg-white border-none shadow-sm hover:shadow-lg transition-all cursor-pointer rounded-[2rem] border-b-4 border-emerald-500">
+                    <Card onClick={() => navigate('/pedidos?status=finalizados')} className="p-6 bg-white border-none shadow-sm hover:shadow-lg transition-all cursor-pointer rounded-[2rem] border-b-4 border-emerald-500">
                         <div className="flex items-center justify-between mb-4"><CheckCheck className="h-6 w-6 text-emerald-500" /><Badge className="bg-emerald-100 text-emerald-700">{stats.concluido}</Badge></div>
                         <h3 className="text-[9px] font-black text-emerald-600 uppercase tracking-widest mb-1 font-montserrat">Finalizados</h3>
                         <p className="text-3xl font-black text-slate-800 tracking-tighter">{stats.concluido}</p>
                     </Card>
                 </div>
 
-                {/* --- SEÇÃO 2: AÇÕES RÁPIDAS --- */}
                 <Card className="p-8 mb-10 border-none shadow-sm rounded-[2.5rem] bg-white">
                     <h3 className="text-4xl text-[#06B6D4] font-allura mb-6">Ações Rápidas</h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -216,13 +216,12 @@ export default function Dashboard() {
                     </div>
                 </Card>
 
-                {/* --- SEÇÃO 3: FINANCEIRO --- */}
                 <h3 className="text-4xl text-[#06B6D4] font-allura mb-6">Resumo Financeiro do Mês</h3>
                 <div className="grid gap-6 md:grid-cols-3">
                     <Card className="p-6 bg-emerald-50/50 border-none shadow-sm rounded-[2rem] flex flex-col justify-center gap-2">
                         <div className="flex items-center gap-3 mb-2">
                             <div className="h-10 w-10 rounded-xl bg-emerald-500 flex items-center justify-center text-white"><DollarSign className="h-5 w-5" /></div>
-                            <h3 className="text-[10px] font-black text-emerald-700 uppercase tracking-widest font-montserrat">Faturamento Real</h3>
+                            <h3 className="text-[10px] font-black text-emerald-700 uppercase tracking-widest font-montserrat">Faturamento Estimado</h3>
                         </div>
                         <p className="text-3xl font-black text-emerald-800 tracking-tighter">{formatarDinheiro(stats.faturamentoMes)}</p>
                     </Card>

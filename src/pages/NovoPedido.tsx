@@ -97,7 +97,7 @@ export default function NovoPedido() {
     const copiarFrenteParaRolete = () => {
         if (formData.cor_frente) {
             setFormData(prev => ({ ...prev, cor_roletes: prev.cor_frente }));
-            toast.success("Rolete igual ao tecido da frente! ✨");
+            toast.success("Rolete igual ao tecido da frente!");
         } else {
             toast.error("Escolha o tecido da frente primeiro.");
         }
@@ -139,8 +139,8 @@ export default function NovoPedido() {
                     const dataFormatada = formData.data_entrega.split('-').reverse().join('/');
 
                     // MUDANÇA AQUI: Usando \n para pular linha e sem o %0A manual
-                    const mensagemTexto = `Olá, ${nomeCliente}! ✨\n\n` +
-                        `*CONFIRMAÇÃO DE PEDIDO - FABBIS* 👙\n\n` +
+                    const mensagemTexto = `Olá, ${nomeCliente}! \n\n` +
+                        `*CONFIRMAÇÃO DE PEDIDO - FABBIS* \n\n` +
                         `*Peça:* ${formData.produto} (Tam: ${formData.tamanho})\n\n` +
                         `*DESIGN & CORES:*\n` +
                         `- Tecido Principal: ${formData.cor_frente}\n` +
@@ -150,9 +150,9 @@ export default function NovoPedido() {
                         `*MODELAGEM:*\n` +
                         `- Top: ${formData.modelo_cima} ${formData.tem_bojo === "true" ? "(C/ Bojo)" : "(S/ Bojo)"}\n` +
                         `- Calcinha: ${formData.modelo_baixo} (${formData.tipo_lateral_baixo})\n\n` +
-                        `📅 *Entrega prevista:* ${dataFormatada}\n` +
-                        `💰 *Valor Total:* R$ ${parseFloat(formData.valor).toFixed(2)}\n\n` +
-                        `Tudo certinho? Se sim, já vou dar início à produção da sua peça exclusiva! ✨💖`;
+                        `*Entrega prevista:* ${dataFormatada}\n` +
+                        ` *Valor Total:* R$ ${parseFloat(formData.valor).toFixed(2)}\n\n` +
+                        `Tudo certinho? Se sim, já vou dar início à produção da sua peça exclusiva!`;
 
                     // AQUI ESTÁ A MÁGICA QUE TRADUZ OS EMOJIS E O '&'
                     const mensagemCodificada = encodeURIComponent(mensagemTexto);
@@ -160,7 +160,7 @@ export default function NovoPedido() {
                     window.open(`https://wa.me/55${cleanPhone}?text=${mensagemCodificada}`, "_blank");
                 }
 
-                toast.success("Pedido registrado e enviado para o Whats! 👙");
+                toast.success("Pedido registrado e enviado para o Whats!");
                 navigate("/pedidos");
             } catch (error) {
                 toast.error("Erro ao salvar pedido.");
@@ -301,7 +301,7 @@ export default function NovoPedido() {
                     </Card>
 
                     <Button type="submit" disabled={salvando} className="w-full h-20 bg-slate-900 text-white font-black rounded-[2.5rem] text-xl uppercase tracking-widest shadow-xl transition-all active:scale-95">
-                        {salvando ? <Loader2 className="animate-spin" /> : "Finalizar Pedido ✨"}
+                        {salvando ? <Loader2 className="animate-spin" /> : "Finalizar Pedido"}
                     </Button>
                 </form>
             </main>
